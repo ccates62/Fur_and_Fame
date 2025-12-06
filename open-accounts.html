@@ -1,0 +1,2274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fur & Fame - Accounts Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #fef3c7 0%, #fed7aa 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        h1 {
+            font-size: 2.5rem;
+            color: #1f2937;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #6b7280;
+            margin-bottom: 30px;
+        }
+        .payment-summary {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border: 2px solid #fcd34d;
+        }
+        .payment-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .stat-box {
+            background: #fef3c7;
+            padding: 16px;
+            border-radius: 8px;
+        }
+        .stat-label {
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #92400e;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        th {
+            background: #f9fafb;
+            font-weight: 600;
+            color: #374151;
+        }
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        .status-active {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 24px;
+            margin-bottom: 30px;
+        }
+        .service-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border: 2px solid #e5e7eb;
+        }
+        .service-card.complete {
+            border-color: #10b981;
+        }
+        .service-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .service-title {
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: #1f2937;
+        }
+        .service-status {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        .status-complete {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+        .btn-primary {
+            background: #f59e0b;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #d97706;
+        }
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #374151;
+        }
+        .btn-secondary:hover {
+            background: #e5e7eb;
+        }
+        .btn-full {
+            width: 100%;
+            margin-bottom: 8px;
+        }
+        .api-keys {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #e5e7eb;
+        }
+        .key-item {
+            background: #f9fafb;
+            padding: 8px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            font-size: 0.75rem;
+        }
+        .key-name {
+            font-family: monospace;
+            color: #6b7280;
+            font-weight: 500;
+        }
+        .quick-actions {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .actions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐾 Fur & Fame - Accounts Dashboard</h1>
+        <p class="subtitle">Manage all your service accounts and monitor payments in one place</p>
+
+        <!-- Server Control Section -->
+        <div class="payment-summary" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border-color: #1e40af; margin-bottom: 30px;">
+            <h2 style="font-size: 1.5rem; margin-bottom: 16px; color: white;">🚀 Server Control</h2>
+            <p style="color: rgba(255,255,255,0.9); margin-bottom: 20px;">Start your Next.js development server to access the full dashboard features</p>
+            
+            <!-- Copy-Paste Command -->
+            <div style="background: rgba(0,0,0,0.2); border-radius: 8px; padding: 12px; margin-bottom: 16px; border: 1px solid rgba(255,255,255,0.3);">
+                <p style="color: rgba(255,255,255,0.9); font-size: 0.875rem; margin-bottom: 8px; font-weight: 500;">📋 Copy & Paste in PowerShell:</p>
+                <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; font-family: 'Courier New', monospace; color: #fbbf24; font-size: 0.9rem; position: relative;">
+                    <code id="serverCommand" style="user-select: all; display: block;">cd "c:\Users\ccate\Fur_and_Fame"; if (-not (Test-Path "node_modules\.bin\next.cmd")) { npm install }; npx next dev</code>
+                    <button onclick="copyServerCommand(event)" style="position: absolute; top: 8px; right: 8px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; cursor: pointer;">📋 Copy</button>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+                <button onclick="startServer()" class="btn" style="background: white; color: #2563eb; font-weight: 600; padding: 12px 24px; font-size: 1rem;">
+                    ▶️ Start Server
+                </button>
+                <a href="http://localhost:3000/accounts" target="_blank" class="btn" style="background: rgba(255,255,255,0.2); color: white; border: 2px solid white; padding: 12px 24px; font-size: 1rem; text-decoration: none;">
+                    🌐 Open Dashboard (localhost:3000)
+                </a>
+                <button onclick="checkServerStatus()" class="btn" style="background: rgba(255,255,255,0.2); color: white; border: 2px solid white; padding: 8px 16px; font-size: 0.875rem; cursor: pointer;">
+                    🔄 Check Status
+                </button>
+                <span id="serverStatus" style="color: rgba(255,255,255,0.9); font-size: 0.875rem; padding: 8px 16px; background: rgba(255,255,255,0.1); border-radius: 6px;">
+                    Server Status: Checking...
+                </span>
+            </div>
+            <p style="color: rgba(255,255,255,0.8); font-size: 0.75rem; margin-top: 12px; margin-bottom: 0;">
+                💡 The server will run in a new PowerShell window. Keep it open while developing.
+            </p>
+            <p style="color: rgba(255,255,255,0.7); font-size: 0.7rem; margin-top: 8px; margin-bottom: 0;">
+                ⚠️ If status shows "Not Running" but server is actually running, try accessing via <a href="http://localhost:3000/accounts" target="_blank" style="color: rgba(255,255,255,0.9); text-decoration: underline;">http://localhost:3000/accounts</a> instead
+            </p>
+        </div>
+
+        <!-- Payment Summary -->
+        <div class="payment-summary">
+            <h2 style="font-size: 1.5rem; margin-bottom: 16px; color: #1f2937;">💰 Payment Overview</h2>
+            <div class="payment-stats">
+                <div class="stat-box">
+                    <div class="stat-label">Monthly Recurring</div>
+                    <div class="stat-value">$45</div>
+                    <div style="font-size: 0.75rem; color: #6b7280; margin-top: 4px;">(Cursor Pro $20 + Potential Supabase Pro $25)</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Annual Recurring</div>
+                    <div class="stat-value">$20</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Active Services</div>
+                    <div class="stat-value">7</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Pending Setup</div>
+                    <div class="stat-value">5</div>
+                </div>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Service</th>
+                        <th>Plan</th>
+                        <th>Amount</th>
+                        <th>Frequency</th>
+                        <th>Next Due</th>
+                        <th>Expires</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Supabase</strong></td>
+                        <td>Free Tier (Current)</td>
+                        <td>$0</td>
+                        <td>One-time</td>
+                        <td>N/A</td>
+                        <td>N/A</td>
+                        <td><span class="status-badge status-active">Active</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Supabase Pro</strong></td>
+                        <td>Pro Plan (Potential Upgrade)</td>
+                        <td>$25</td>
+                        <td>Monthly</td>
+                        <td>When upgraded</td>
+                        <td>N/A</td>
+                        <td><span class="status-badge status-pending">Pending</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>fal.ai</strong></td>
+                        <td>Pay-as-you-go</td>
+                        <td>$0</td>
+                        <td>One-time</td>
+                        <td>N/A</td>
+                        <td>N/A</td>
+                        <td><span class="status-badge status-pending">Pending</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Stripe</strong></td>
+                        <td>Free (2.9% + $0.30 per transaction)</td>
+                        <td>$0</td>
+                        <td>One-time</td>
+                        <td>N/A</td>
+                        <td>N/A</td>
+                        <td><span class="status-badge status-active">Active</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Printful</strong></td>
+                        <td>Free (per-item fees)</td>
+                        <td>$0</td>
+                        <td>One-time</td>
+                        <td>N/A</td>
+                        <td>N/A</td>
+                        <td><span class="status-badge status-active">Active</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Resend</strong></td>
+                        <td>Free Tier (100 emails/day)</td>
+                        <td>$0</td>
+                        <td>Monthly</td>
+                        <td>2025-01-06</td>
+                        <td>N/A</td>
+                        <td><span class="status-badge status-active">Active</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Vercel</strong></td>
+                        <td>Hobby (Free)</td>
+                        <td>$0</td>
+                        <td>One-time</td>
+                        <td>N/A</td>
+                        <td>N/A</td>
+                        <td><span class="status-badge status-active">Active</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Domain (furandfriends.com)</strong></td>
+                        <td>Annual Registration</td>
+                        <td>$20</td>
+                        <td>Yearly</td>
+                        <td>2026-12-04</td>
+                        <td>2026-12-04<br><span style="font-size: 0.75rem; color: #6b7280;">Domain registration - renews annually</span></td>
+                        <td><span class="status-badge status-active">Active</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Cursor Pro</strong></td>
+                        <td>Pro Plan</td>
+                        <td>$20</td>
+                        <td>Monthly</td>
+                        <td>2025-02-06</td>
+                        <td>N/A</td>
+                        <td><span class="status-badge status-active">Active</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- fal.ai Usage Monitoring -->
+        <div class="payment-summary" style="margin-bottom: 30px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+                <h2 style="font-size: 1.5rem; margin: 0; color: #1f2937;">🤖 fal.ai Usage & Balance Monitoring</h2>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <a href="https://fal.ai/dashboard/billing" target="_blank" class="btn" style="background: #10b981; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
+                        💳 Add Funds / Pay
+                    </a>
+                    <a href="https://fal.ai/dashboard" target="_blank" class="btn" style="background: #6366f1; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 500; display: inline-block;">
+                        📊 View Dashboard
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Balance & Alert Section -->
+            <div class="payment-stats" style="margin-bottom: 20px;">
+                <div class="stat-box" style="background: #dbeafe;">
+                    <div class="stat-label">Current Balance</div>
+                    <div class="stat-value" id="falBalance" style="color: #1e40af;">$0.00</div>
+                </div>
+                <div class="stat-box" style="background: #fef3c7;">
+                    <div class="stat-label">Today's Usage</div>
+                    <div class="stat-value" id="todayUsage" style="color: #92400e;">$0.00</div>
+                </div>
+                <div class="stat-box" style="background: #f3f4f6;">
+                    <div class="stat-label">This Month</div>
+                    <div class="stat-value" id="monthUsage" style="color: #374151;">$0.00</div>
+                </div>
+                <div class="stat-box" id="alertBox" style="background: #fee2e2; display: none;">
+                    <div class="stat-label">⚠️ Alert</div>
+                    <div class="stat-value" id="alertMessage" style="color: #dc2626; font-size: 1rem;">Low Balance!</div>
+                </div>
+            </div>
+
+            <!-- Daily Usage Chart -->
+            <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                <h3 style="font-size: 1.1rem; margin-bottom: 16px; color: #374151;">Daily Usage (Last 7 Days)</h3>
+                <canvas id="usageChart" style="max-height: 300px;"></canvas>
+            </div>
+
+            <!-- Balance Check Helper -->
+            <div style="background: #fef3c7; padding: 16px; border-radius: 8px; border: 2px solid #f59e0b; margin-bottom: 16px;">
+                <h3 style="font-size: 1rem; margin-bottom: 12px; color: #92400e;">📋 How to Update Your Balance</h3>
+                <p style="font-size: 0.875rem; color: #78350f; margin-bottom: 12px;">
+                    <strong>Note:</strong> fal.ai doesn't provide a public API for balance, so manual entry is required.
+                </p>
+                <div style="background: white; padding: 12px; border-radius: 6px; margin-bottom: 12px;">
+                    <p style="font-size: 0.875rem; color: #374151; margin-bottom: 8px; font-weight: 500;">Quick Steps:</p>
+                    <ol style="font-size: 0.875rem; color: #6b7280; margin-left: 20px; line-height: 1.6;">
+                        <li>Click the button below to open your fal.ai billing page</li>
+                        <li>Check your current balance and usage</li>
+                        <li>Enter the values in the "Manual Update" section below</li>
+                        <li>Click "Update Data" to save</li>
+                    </ol>
+                </div>
+                <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+                    <a href="https://fal.ai/dashboard/billing" target="_blank" class="btn" style="background: #f59e0b; color: white; padding: 10px 20px; text-decoration: none; border-radius: 8px; font-weight: 500; display: inline-block;">
+                        🔗 Open fal.ai Billing Page
+                    </a>
+                    <a href="https://fal.ai/dashboard/keys" target="_blank" class="btn" style="background: #6366f1; color: white; padding: 10px 20px; text-decoration: none; border-radius: 8px; font-weight: 500; display: inline-block;">
+                        🔑 Manage API Keys
+                    </a>
+                </div>
+            </div>
+
+            <!-- Manual Update Section -->
+            <div style="background: #f9fafb; padding: 16px; border-radius: 8px; border: 1px solid #e5e7eb;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 12px;">
+                    <h3 style="font-size: 1rem; margin: 0; color: #374151;">📊 Update Usage Data</h3>
+                    <button onclick="fetchFalBalance()" class="btn" style="background: #f59e0b; color: white; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; border: none;">
+                        🔄 Auto-Fetch Balance
+                    </button>
+                </div>
+                <p style="font-size: 0.875rem; color: #6b7280; margin-bottom: 16px;">
+                    Click "Auto-Fetch Balance" to try automatic retrieval, or enter manually from the <a href="https://fal.ai/dashboard/billing" target="_blank" style="color: #2563eb;">fal.ai billing page</a>.
+                </p>
+                <div id="fetchStatus" style="display: none; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; font-size: 0.875rem; font-weight: 500;"></div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                    <div>
+                        <label style="display: block; font-size: 0.875rem; color: #374151; margin-bottom: 4px;">Current Balance ($)</label>
+                        <input type="number" id="balanceInput" step="0.01" placeholder="0.00" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.875rem;">
+                    </div>
+                    <div>
+                        <label style="display: block; font-size: 0.875rem; color: #374151; margin-bottom: 4px;">Today's Usage ($)</label>
+                        <input type="number" id="todayInput" step="0.01" placeholder="0.00" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.875rem;">
+                    </div>
+                    <div>
+                        <label style="display: block; font-size: 0.875rem; color: #374151; margin-bottom: 4px;">This Month ($)</label>
+                        <input type="number" id="monthInput" step="0.01" placeholder="0.00" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.875rem;">
+                    </div>
+                    <div style="display: flex; align-items: flex-end;">
+                        <button onclick="updateUsage()" class="btn btn-primary" style="width: 100%; padding: 10px;">Update Data</button>
+                    </div>
+                </div>
+                <div style="margin-top: 12px;">
+                    <label style="display: block; font-size: 0.875rem; color: #374151; margin-bottom: 4px;">Low Balance Alert Threshold ($)</label>
+                    <input type="number" id="alertThreshold" step="0.01" value="10.00" placeholder="10.00" style="width: 200px; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.875rem;">
+                </div>
+            </div>
+
+            <!-- Usage History Table -->
+            <div style="margin-top: 20px;">
+                <h3 style="font-size: 1.1rem; margin-bottom: 12px; color: #374151;">Recent Usage History</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: #f9fafb;">
+                            <th style="padding: 12px; text-align: left; font-weight: 600; color: #374151;">Date</th>
+                            <th style="padding: 12px; text-align: right; font-weight: 600; color: #374151;">Usage</th>
+                            <th style="padding: 12px; text-align: right; font-weight: 600; color: #374151;">Balance</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usageHistory">
+                        <tr style="border-bottom: 1px solid #e5e7eb;">
+                            <td style="padding: 12px; color: #6b7280;">No data yet</td>
+                            <td style="padding: 12px; text-align: right; color: #6b7280;">-</td>
+                            <td style="padding: 12px; text-align: right; color: #6b7280;">-</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Supabase Usage Monitoring -->
+        <div class="payment-summary" style="margin-bottom: 30px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+                <h2 style="font-size: 1.5rem; margin: 0; color: #1f2937;">🔐 Supabase Usage Monitoring & Upgrade Alerts</h2>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <a href="https://supabase.com/dashboard/project/kanhbrdiagogexsyfkkl/settings/billing" target="_blank" class="btn" style="background: #10b981; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
+                        ⭐ Upgrade to Pro ($25/mo)
+                    </a>
+                    <a href="https://supabase.com/dashboard/project/kanhbrdiagogexsyfkkl/settings/usage" target="_blank" class="btn" style="background: #3b82f6; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 500; display: inline-block;">
+                        📊 View Usage
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Free Tier Limits Info -->
+            <div style="background: #fef3c7; border: 1px solid #fbbf24; border-radius: 8px; padding: 12px; margin-bottom: 20px;">
+                <p style="margin: 0; color: #92400e; font-size: 0.875rem;">
+                    <strong>Free Tier Limits:</strong> Database: 500MB | Storage: 1GB | Bandwidth: 2GB/month | 
+                    <strong>Alert Threshold:</strong> 80% (400MB / 800MB / 1.6GB)
+                </p>
+            </div>
+
+            <!-- Usage Stats -->
+            <div class="payment-stats" style="margin-bottom: 20px;">
+                <div class="stat-box" id="dbStatBox" style="background: #dbeafe;">
+                    <div class="stat-label">Database Size</div>
+                    <div class="stat-value" id="dbUsage">0 MB</div>
+                    <div style="font-size: 0.75rem; color: #6b7280; margin-top: 4px;">of 500 MB</div>
+                    <div style="margin-top: 8px;">
+                        <div style="background: #e5e7eb; height: 8px; border-radius: 4px; overflow: hidden;">
+                            <div id="dbProgress" style="background: #3b82f6; height: 100%; width: 0%; transition: width 0.3s;"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="stat-box" id="storageStatBox" style="background: #fef3c7;">
+                    <div class="stat-label">Storage</div>
+                    <div class="stat-value" id="storageUsage">0 MB</div>
+                    <div style="font-size: 0.75rem; color: #6b7280; margin-top: 4px;">of 1 GB</div>
+                    <div style="margin-top: 8px;">
+                        <div style="background: #e5e7eb; height: 8px; border-radius: 4px; overflow: hidden;">
+                            <div id="storageProgress" style="background: #f59e0b; height: 100%; width: 0%; transition: width 0.3s;"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="stat-box" id="bandwidthStatBox" style="background: #e0e7ff;">
+                    <div class="stat-label">Bandwidth (Month)</div>
+                    <div class="stat-value" id="bandwidthUsage">0 GB</div>
+                    <div style="font-size: 0.75rem; color: #6b7280; margin-top: 4px;">of 2 GB</div>
+                    <div style="margin-top: 8px;">
+                        <div style="background: #e5e7eb; height: 8px; border-radius: 4px; overflow: hidden;">
+                            <div id="bandwidthProgress" style="background: #6366f1; height: 100%; width: 0%; transition: width 0.3s;"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="stat-box" style="background: #f3f4f6;">
+                    <div class="stat-label">Status</div>
+                    <div id="supabaseStatus" style="font-size: 1.25rem; font-weight: 600; color: #10b981;">✅ Safe</div>
+                    <div style="font-size: 0.75rem; color: #6b7280; margin-top: 4px;">Free tier</div>
+                </div>
+            </div>
+
+            <!-- Alert Box -->
+            <div id="supabaseAlertBox" style="display: none; background: #fee2e2; border: 2px solid #ef4444; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="font-size: 1.5rem;">⚠️</span>
+                    <div style="flex: 1;">
+                        <h3 style="margin: 0 0 8px 0; color: #991b1b; font-size: 1.125rem;">Upgrade to Pro Plan Recommended!</h3>
+                        <p id="supabaseAlertMessage" style="margin: 0; color: #7f1d1d; font-size: 0.875rem;"></p>
+                        <a href="https://supabase.com/pricing" target="_blank" class="btn" style="background: #10b981; color: white; margin-top: 12px; padding: 8px 16px; border-radius: 6px; text-decoration: none; display: inline-block; font-weight: 500;">
+                            ⭐ Upgrade to Pro ($25/mo) →
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Usage Graphs -->
+            <div style="background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; border: 1px solid #e5e7eb;">
+                <h3 style="font-size: 1.125rem; margin-bottom: 16px; color: #1f2937;">📊 Usage Trends (Last 7 Days)</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                    <div>
+                        <h4 style="font-size: 0.875rem; color: #6b7280; margin-bottom: 8px;">Database Size</h4>
+                        <canvas id="dbChart" style="max-height: 200px;"></canvas>
+                    </div>
+                    <div>
+                        <h4 style="font-size: 0.875rem; color: #6b7280; margin-bottom: 8px;">Storage</h4>
+                        <canvas id="storageChart" style="max-height: 200px;"></canvas>
+                    </div>
+                    <div>
+                        <h4 style="font-size: 0.875rem; color: #6b7280; margin-bottom: 8px;">Bandwidth</h4>
+                        <canvas id="bandwidthChart" style="max-height: 200px;"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Manual Update Form -->
+            <div style="background: #f9fafb; border-radius: 8px; padding: 20px; border: 1px solid #e5e7eb;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 12px;">
+                    <h3 style="font-size: 1.125rem; margin: 0; color: #1f2937;">📝 Update Usage Data</h3>
+                    <button onclick="fetchSupabaseUsage()" class="btn" style="background: #3b82f6; color: white; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; border: none;">
+                        🔄 Auto-Fetch Usage Data
+                    </button>
+                </div>
+                <p style="font-size: 0.875rem; color: #6b7280; margin-bottom: 16px;">
+                    Click "Auto-Fetch" to automatically retrieve usage data, or enter manually: <a href="https://supabase.com/dashboard/project/kanhbrdiagogexsyfkkl/settings/usage" target="_blank" style="color: #2563eb;">View Usage →</a>
+                </p>
+                <div id="supabaseFetchStatus" style="display: none; padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; font-size: 0.875rem;"></div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px;">
+                    <div>
+                        <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 6px;">Database Size (MB)</label>
+                        <input type="number" id="dbInput" step="0.1" min="0" max="500" placeholder="0" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.875rem;">
+                    </div>
+                    <div>
+                        <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 6px;">Storage (MB)</label>
+                        <input type="number" id="storageInput" step="0.1" min="0" max="1024" placeholder="0" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.875rem;">
+                    </div>
+                    <div>
+                        <label style="display: block; font-size: 0.875rem; font-weight: 500; color: #374151; margin-bottom: 6px;">Bandwidth (GB)</label>
+                        <input type="number" id="bandwidthInput" step="0.01" min="0" max="2" placeholder="0" style="width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 0.875rem;">
+                    </div>
+                </div>
+                <button onclick="updateSupabaseUsage()" style="background: #3b82f6; color: white; padding: 10px 20px; border: none; border-radius: 6px; font-weight: 500; cursor: pointer; font-size: 0.875rem;">
+                    💾 Save Usage Data
+                </button>
+                <span id="supabaseLastUpdate" style="margin-left: 12px; font-size: 0.75rem; color: #6b7280;"></span>
+            </div>
+        </div>
+
+        <!-- GitHub Projects -->
+        <div class="payment-summary" style="margin-bottom: 30px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h2 style="font-size: 1.5rem; color: #1f2937;">🐙 GitHub Projects</h2>
+                <a href="https://github.com/new" target="_blank" class="btn btn-primary" style="padding: 8px 16px; font-size: 0.875rem;">+ New Repository</a>
+            </div>
+            <div class="overflow-x-auto">
+                <table style="width: 100%; border-collapse: collapse; margin-top: 16px;">
+                    <thead>
+                        <tr style="border-bottom: 2px solid #e5e7eb;">
+                            <th style="padding: 12px; text-align: left; background: #f9fafb; font-weight: 600; color: #374151;">Repository</th>
+                            <th style="padding: 12px; text-align: left; background: #f9fafb; font-weight: 600; color: #374151;">Description</th>
+                            <th style="padding: 12px; text-align: left; background: #f9fafb; font-weight: 600; color: #374151;">Branch</th>
+                            <th style="padding: 12px; text-align: left; background: #f9fafb; font-weight: 600; color: #374151;">Language</th>
+                            <th style="padding: 12px; text-align: left; background: #f9fafb; font-weight: 600; color: #374151;">Last Updated</th>
+                            <th style="padding: 12px; text-align: left; background: #f9fafb; font-weight: 600; color: #374151;">Status</th>
+                            <th style="padding: 12px; text-align: left; background: #f9fafb; font-weight: 600; color: #374151;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="border-bottom: 1px solid #e5e7eb;">
+                            <td style="padding: 12px;">
+                                <a href="https://github.com/ccates62/Fur_and_Fame" target="_blank" style="font-weight: 600; color: #2563eb; text-decoration: none;">Fur_and_Fame</a>
+                            </td>
+                            <td style="padding: 12px; color: #6b7280;">AI Pet Portrait E-Commerce Platform - Main Project</td>
+                            <td style="padding: 12px;">
+                                <span style="font-family: monospace; font-size: 0.75rem; background: #f3f4f6; padding: 4px 8px; border-radius: 4px;">main</span>
+                            </td>
+                            <td style="padding: 12px; color: #6b7280;">TypeScript</td>
+                            <td style="padding: 12px; color: #6b7280;">2025-01-06</td>
+                            <td style="padding: 12px;">
+                                <span class="status-badge status-active">Active</span>
+                            </td>
+                            <td style="padding: 12px;">
+                                <a href="https://github.com/ccates62/Fur_and_Fame" target="_blank" style="color: #2563eb; text-decoration: none; font-size: 0.75rem; font-weight: 500;">Open →</a>
+                            </td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #e5e7eb;">
+                            <td style="padding: 12px;">
+                                <a href="https://github.com/ccates62/fur-and-fame-api" target="_blank" style="font-weight: 600; color: #2563eb; text-decoration: none;">fur-and-fame-api</a>
+                            </td>
+                            <td style="padding: 12px; color: #6b7280;">Backend API for Fur & Fame - Supabase integrations</td>
+                            <td style="padding: 12px;">
+                                <span style="font-family: monospace; font-size: 0.75rem; background: #f3f4f6; padding: 4px 8px; border-radius: 4px;">main</span>
+                            </td>
+                            <td style="padding: 12px; color: #6b7280;">TypeScript</td>
+                            <td style="padding: 12px; color: #6b7280;">2025-01-06</td>
+                            <td style="padding: 12px;">
+                                <span class="status-badge status-pending">Planning</span>
+                            </td>
+                            <td style="padding: 12px;">
+                                <a href="https://github.com/ccates62/fur-and-fame-api" target="_blank" style="color: #2563eb; text-decoration: none; font-size: 0.75rem; font-weight: 500;">Open →</a>
+                            </td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #e5e7eb;">
+                            <td style="padding: 12px;">
+                                <a href="https://github.com/ccates62/fur-and-fame-stripe" target="_blank" style="font-weight: 600; color: #2563eb; text-decoration: none;">fur-and-fame-stripe</a>
+                            </td>
+                            <td style="padding: 12px; color: #6b7280;">Stripe payment integration and webhook handlers</td>
+                            <td style="padding: 12px;">
+                                <span style="font-family: monospace; font-size: 0.75rem; background: #f3f4f6; padding: 4px 8px; border-radius: 4px;">main</span>
+                            </td>
+                            <td style="padding: 12px; color: #6b7280;">TypeScript</td>
+                            <td style="padding: 12px; color: #6b7280;">2025-01-06</td>
+                            <td style="padding: 12px;">
+                                <span class="status-badge status-pending">Planning</span>
+                            </td>
+                            <td style="padding: 12px;">
+                                <a href="https://github.com/ccates62/fur-and-fame-stripe" target="_blank" style="color: #2563eb; text-decoration: none; font-size: 0.75rem; font-weight: 500;">Open →</a>
+                            </td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #e5e7eb;">
+                            <td style="padding: 12px;">
+                                <a href="https://github.com/ccates62/fur-and-fame-printful" target="_blank" style="font-weight: 600; color: #2563eb; text-decoration: none;">fur-and-fame-printful</a>
+                            </td>
+                            <td style="padding: 12px; color: #6b7280;">Printful API integration for order fulfillment</td>
+                            <td style="padding: 12px;">
+                                <span style="font-family: monospace; font-size: 0.75rem; background: #f3f4f6; padding: 4px 8px; border-radius: 4px;">main</span>
+                            </td>
+                            <td style="padding: 12px; color: #6b7280;">TypeScript</td>
+                            <td style="padding: 12px; color: #6b7280;">2025-01-06</td>
+                            <td style="padding: 12px;">
+                                <span class="status-badge status-pending">Planning</span>
+                            </td>
+                            <td style="padding: 12px;">
+                                <a href="https://github.com/ccates62/fur-and-fame-printful" target="_blank" style="color: #2563eb; text-decoration: none; font-size: 0.75rem; font-weight: 500;">Open →</a>
+                            </td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #e5e7eb;">
+                            <td style="padding: 12px;">
+                                <a href="https://github.com/ccates62/fur-and-fame-ai" target="_blank" style="font-weight: 600; color: #2563eb; text-decoration: none;">fur-and-fame-ai</a>
+                            </td>
+                            <td style="padding: 12px; color: #6b7280;">fal.ai integration for AI portrait generation</td>
+                            <td style="padding: 12px;">
+                                <span style="font-family: monospace; font-size: 0.75rem; background: #f3f4f6; padding: 4px 8px; border-radius: 4px;">main</span>
+                            </td>
+                            <td style="padding: 12px; color: #6b7280;">TypeScript</td>
+                            <td style="padding: 12px; color: #6b7280;">2025-01-06</td>
+                            <td style="padding: 12px;">
+                                <span class="status-badge status-pending">Planning</span>
+                            </td>
+                            <td style="padding: 12px;">
+                                <a href="https://github.com/ccates62/fur-and-fame-ai" target="_blank" style="color: #2563eb; text-decoration: none; font-size: 0.75rem; font-weight: 500;">Open →</a>
+                            </td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #e5e7eb;">
+                            <td style="padding: 12px;">
+                                <a href="https://github.com/ccates62/fur-and-fame-email" target="_blank" style="font-weight: 600; color: #2563eb; text-decoration: none;">fur-and-fame-email</a>
+                            </td>
+                            <td style="padding: 12px; color: #6b7280;">Resend email templates and automation</td>
+                            <td style="padding: 12px;">
+                                <span style="font-family: monospace; font-size: 0.75rem; background: #f3f4f6; padding: 4px 8px; border-radius: 4px;">main</span>
+                            </td>
+                            <td style="padding: 12px; color: #6b7280;">TypeScript</td>
+                            <td style="padding: 12px; color: #6b7280;">2025-01-06</td>
+                            <td style="padding: 12px;">
+                                <span class="status-badge status-pending">Planning</span>
+                            </td>
+                            <td style="padding: 12px;">
+                                <a href="https://github.com/ccates62/fur-and-fame-email" target="_blank" style="color: #2563eb; text-decoration: none; font-size: 0.75rem; font-weight: 500;">Open →</a>
+                            </td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #e5e7eb;">
+                            <td style="padding: 12px;">
+                                <a href="https://github.com/ccates62/fur-and-fame-video" target="_blank" style="font-weight: 600; color: #2563eb; text-decoration: none;">fur-and-fame-video</a>
+                            </td>
+                            <td style="padding: 12px; color: #6b7280;">Remotion video generation for TikTok ads</td>
+                            <td style="padding: 12px;">
+                                <span style="font-family: monospace; font-size: 0.75rem; background: #f3f4f6; padding: 4px 8px; border-radius: 4px;">main</span>
+                            </td>
+                            <td style="padding: 12px; color: #6b7280;">TypeScript</td>
+                            <td style="padding: 12px; color: #6b7280;">2025-01-06</td>
+                            <td style="padding: 12px;">
+                                <span class="status-badge status-pending">Planning</span>
+                            </td>
+                            <td style="padding: 12px;">
+                                <a href="https://github.com/ccates62/fur-and-fame-video" target="_blank" style="color: #2563eb; text-decoration: none; font-size: 0.75rem; font-weight: 500;">Open →</a>
+                            </td>
+                        </tr>
+                        <tr style="border-bottom: 1px solid #e5e7eb;">
+                            <td style="padding: 12px;">
+                                <a href="https://github.com/ccates62/fur-and-fame-docs" target="_blank" style="font-weight: 600; color: #2563eb; text-decoration: none;">fur-and-fame-docs</a>
+                            </td>
+                            <td style="padding: 12px; color: #6b7280;">Documentation and setup guides</td>
+                            <td style="padding: 12px;">
+                                <span style="font-family: monospace; font-size: 0.75rem; background: #f3f4f6; padding: 4px 8px; border-radius: 4px;">main</span>
+                            </td>
+                            <td style="padding: 12px; color: #6b7280;">Markdown</td>
+                            <td style="padding: 12px; color: #6b7280;">2025-01-06</td>
+                            <td style="padding: 12px;">
+                                <span class="status-badge status-pending">Planning</span>
+                            </td>
+                            <td style="padding: 12px;">
+                                <a href="https://github.com/ccates62/fur-and-fame-docs" target="_blank" style="color: #2563eb; text-decoration: none; font-size: 0.75rem; font-weight: 500;">Open →</a>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Services Grid -->
+        <div class="services-grid">
+            <!-- Supabase -->
+            <div class="service-card complete">
+                <div class="service-header" onclick="toggleServiceDetails(0)" style="cursor: pointer;">
+                    <div class="service-title">🔐 Supabase</div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="service-status status-complete">✅ Complete</span>
+                        <span id="serviceToggle0" style="color: #6b7280; font-size: 1.2rem;">▶</span>
+                    </div>
+                </div>
+                <a href="https://supabase.com/dashboard" target="_blank" class="btn btn-primary btn-full">Sign Up / Dashboard</a>
+                <a href="https://supabase.com/pricing" target="_blank" class="btn" style="background: #10b981; color: white; width: 100%; margin-bottom: 8px; padding: 10px 20px; border-radius: 8px; text-decoration: none; text-align: center; font-weight: 500; display: block;">⭐ Upgrade to Pro Plan ($25/mo)</a>
+                <a href="https://supabase.com/docs" target="_blank" class="btn btn-secondary btn-full">📚 Documentation</a>
+                <div class="api-keys">
+                    <div class="key-item">
+                        <div class="key-name">NEXT_PUBLIC_SUPABASE_URL</div>
+                        <div>https://kanhbrdiagogexsyfkkl.supabase.co</div>
+                    </div>
+                    <div class="key-item">
+                        <div class="key-name">NEXT_PUBLIC_SUPABASE_ANON_KEY</div>
+                        <div>eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...</div>
+                    </div>
+                </div>
+                
+                <!-- Expandable Details -->
+                <div id="serviceDetails0" style="display: none; margin-top: 16px; padding-top: 16px; border-top: 2px solid #e5e7eb;">
+                    <h4 style="font-size: 1.125rem; font-weight: 600; color: #1f2937; margin-bottom: 12px;">📊 Service Details</h4>
+                    <div style="background: #dbeafe; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                        <h5 style="font-weight: 600; color: #1f2937; margin-bottom: 4px; font-size: 0.875rem;">What This Service Does:</h5>
+                        <p style="font-size: 0.875rem; color: #374151; margin: 0;">Open-source Firebase alternative providing PostgreSQL database, authentication, storage, and real-time subscriptions.</p>
+                    </div>
+                    <div style="background: #fef3c7; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                        <h5 style="font-weight: 600; color: #1f2937; margin-bottom: 4px; font-size: 0.875rem;">💰 Cost:</h5>
+                        <p style="font-size: 0.875rem; color: #374151; margin: 0; font-weight: 500;">Free Tier (Current) | Pro: $25/month</p>
+                    </div>
+                    <div style="background: #d1fae5; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                        <h5 style="font-weight: 600; color: #1f2937; margin-bottom: 4px; font-size: 0.875rem;">🎯 Use Case:</h5>
+                        <p style="font-size: 0.875rem; color: #374151; margin: 0;">Stores user accounts, pet photos, orders, and handles authentication for the e-commerce platform.</p>
+                    </div>
+                    <div style="background: #e9d5ff; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                        <h5 style="font-weight: 600; color: #1f2937; margin-bottom: 4px; font-size: 0.875rem;">✨ Key Features:</h5>
+                        <ul style="font-size: 0.875rem; color: #374151; margin: 0; padding-left: 20px;">
+                            <li>PostgreSQL database (500MB free, 8GB Pro)</li>
+                            <li>User authentication & authorization</li>
+                            <li>File storage for pet photos (1GB free, 100GB Pro)</li>
+                            <li>Real-time subscriptions</li>
+                            <li>Auto-generated REST APIs</li>
+                            <li>Row Level Security (RLS)</li>
+                        </ul>
+                    </div>
+                    <div style="margin-top: 16px; padding-top: 16px; border-top: 2px solid #e5e7eb;">
+                        <h5 style="font-weight: 600; color: #1f2937; margin-bottom: 12px; font-size: 1rem; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px;">📊 Analytics & Charts</h5>
+                        
+                        <div style="margin-bottom: 16px;">
+                            <h6 style="font-weight: 600; color: #374151; margin-bottom: 6px; font-size: 0.875rem;">📈 Usage Trends (Last 7 Days)</h6>
+                            <div style="height: 100px; background: #f3f4f6; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 0.75rem;">
+                                Line Chart: Daily usage over time - Update data above to see trends
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 16px;">
+                            <h6 style="font-weight: 600; color: #374151; margin-bottom: 6px; font-size: 0.875rem;">💰 Cost Analysis</h6>
+                            <div style="height: 100px; background: #f3f4f6; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 0.75rem;">
+                                Bar Chart: Monthly spending breakdown - Update data to see trends
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 16px;">
+                            <h6 style="font-weight: 600; color: #374151; margin-bottom: 6px; font-size: 0.875rem;">⚡ Performance Metrics</h6>
+                            <div style="height: 100px; background: #f3f4f6; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 0.75rem;">
+                                Area Chart: Response times, uptime, and performance - Update data to see trends
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 16px;">
+                            <h6 style="font-weight: 600; color: #374151; margin-bottom: 6px; font-size: 0.875rem;">📊 Growth Trends</h6>
+                            <div style="height: 100px; background: #f3f4f6; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 0.75rem;">
+                                Stacked Area Chart: User growth, API calls, data growth - Update data to see trends
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- fal.ai -->
+            <div class="service-card complete">
+                <div class="service-header" onclick="toggleServiceDetails(1)" style="cursor: pointer;">
+                    <div class="service-title">🤖 fal.ai</div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="service-status status-complete">✅ Complete</span>
+                        <span id="serviceToggle1" style="color: #6b7280; font-size: 1.2rem;">▶</span>
+                    </div>
+                </div>
+                <a href="https://fal.ai/dashboard" target="_blank" class="btn btn-primary btn-full">Sign Up / Dashboard</a>
+                <a href="https://fal.ai/dashboard/billing" target="_blank" class="btn" style="background: #10b981; color: white; width: 100%; margin-bottom: 8px; padding: 10px 20px; border-radius: 8px; text-decoration: none; text-align: center; font-weight: 500; display: block;">💳 Add Funds / Make Payment</a>
+                <a href="https://fal.ai/docs" target="_blank" class="btn btn-secondary btn-full">📚 Documentation</a>
+                <div class="api-keys">
+                    <div class="key-item" style="background: #d1fae5;">
+                        <div class="key-name">FAL_API_KEY</div>
+                        <div>3c29bf78-1853-4485-9bfd-b02abf47b713:f6ab21b3c482877d0cfba50f534045a1</div>
+                    </div>
+                </div>
+                
+                <!-- Expandable Details -->
+                <div id="serviceDetails1" style="display: none; margin-top: 16px; padding-top: 16px; border-top: 2px solid #e5e7eb;">
+                    <h4 style="font-size: 1.125rem; font-weight: 600; color: #1f2937; margin-bottom: 12px;">📊 Service Details</h4>
+                    <div style="background: #dbeafe; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                        <h5 style="font-weight: 600; color: #1f2937; margin-bottom: 4px; font-size: 0.875rem;">What This Service Does:</h5>
+                        <p style="font-size: 0.875rem; color: #374151; margin: 0;">AI inference platform providing access to Flux Pro and other cutting-edge AI models for generating high-quality pet portraits.</p>
+                    </div>
+                    <div style="background: #fef3c7; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                        <h5 style="font-weight: 600; color: #1f2937; margin-bottom: 4px; font-size: 0.875rem;">💰 Cost:</h5>
+                        <p style="font-size: 0.875rem; color: #374151; margin: 0; font-weight: 500;">Pay-as-you-go (typically $0.01-$0.10 per image)</p>
+                    </div>
+                    <div style="background: #d1fae5; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                        <h5 style="font-weight: 600; color: #1f2937; margin-bottom: 4px; font-size: 0.875rem;">🎯 Use Case:</h5>
+                        <p style="font-size: 0.875rem; color: #374151; margin: 0;">Generates AI pet portraits from uploaded pet photos, creating artistic variations (Renaissance, modern, etc.) for customers to purchase.</p>
+                    </div>
+                    <div style="background: #e9d5ff; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                        <h5 style="font-weight: 600; color: #1f2937; margin-bottom: 4px; font-size: 0.875rem;">✨ Key Features:</h5>
+                        <ul style="font-size: 0.875rem; color: #374151; margin: 0; padding-left: 20px;">
+                            <li>Flux Pro model access</li>
+                            <li>High-resolution AI image generation (4K)</li>
+                            <li>Fast inference times</li>
+                            <li>Multiple style options</li>
+                            <li>API-first architecture</li>
+                            <li>Usage-based pricing</li>
+                        </ul>
+                    </div>
+                    <div style="margin-top: 16px; padding-top: 16px; border-top: 2px solid #e5e7eb;">
+                        <h5 style="font-weight: 600; color: #1f2937; margin-bottom: 12px; font-size: 1rem; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px;">📊 Analytics & Charts</h5>
+                        
+                        <div style="margin-bottom: 16px;">
+                            <h6 style="font-weight: 600; color: #374151; margin-bottom: 6px; font-size: 0.875rem;">📈 Usage Trends (Last 7 Days)</h6>
+                            <div style="height: 100px; background: #f3f4f6; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 0.75rem;">
+                                Line Chart: Daily usage over time - Update data above to see trends
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 16px;">
+                            <h6 style="font-weight: 600; color: #374151; margin-bottom: 6px; font-size: 0.875rem;">💰 Cost Analysis</h6>
+                            <div style="height: 100px; background: #f3f4f6; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 0.75rem;">
+                                Bar Chart: Monthly spending breakdown - Update data to see trends
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 16px;">
+                            <h6 style="font-weight: 600; color: #374151; margin-bottom: 6px; font-size: 0.875rem;">⚡ Performance Metrics</h6>
+                            <div style="height: 100px; background: #f3f4f6; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 0.75rem;">
+                                Area Chart: Response times, uptime, and performance - Update data to see trends
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 16px;">
+                            <h6 style="font-weight: 600; color: #374151; margin-bottom: 6px; font-size: 0.875rem;">📊 Growth Trends</h6>
+                            <div style="height: 100px; background: #f3f4f6; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 0.75rem;">
+                                Stacked Area Chart: User growth, API calls, data growth - Update data to see trends
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stripe -->
+            <div class="service-card">
+                <div class="service-header" onclick="toggleServiceDetails(2)" style="cursor: pointer;">
+                    <div class="service-title">💳 Stripe</div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="service-status status-pending">⏳ Pending</span>
+                        <span id="serviceToggle2" style="color: #6b7280; font-size: 1.2rem;">▶</span>
+                    </div>
+                </div>
+                <a href="https://dashboard.stripe.com/register" target="_blank" class="btn btn-primary btn-full">Sign Up / Dashboard</a>
+                <a href="https://stripe.com/docs" target="_blank" class="btn btn-secondary btn-full">📚 Documentation</a>
+                <div class="api-keys">
+                    <div class="key-item">
+                        <div class="key-name">NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</div>
+                        <div style="color: #9ca3af;">Not configured</div>
+                    </div>
+                    <div class="key-item">
+                        <div class="key-name">STRIPE_SECRET_KEY</div>
+                        <div style="color: #9ca3af;">Not configured</div>
+                    </div>
+                </div>
+                
+                <!-- Expandable Details -->
+                <div id="serviceDetails2" style="display: none; margin-top: 16px; padding-top: 16px; border-top: 2px solid #e5e7eb;">
+                    <h4 style="font-size: 1.125rem; font-weight: 600; color: #1f2937; margin-bottom: 12px;">📊 Service Details</h4>
+                    <div style="background: #dbeafe; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                        <h5 style="font-weight: 600; color: #1f2937; margin-bottom: 4px; font-size: 0.875rem;">What This Service Does:</h5>
+                        <p style="font-size: 0.875rem; color: #374151; margin: 0;">Payment processing platform handling credit card transactions, subscriptions, and secure checkout for customer purchases.</p>
+                    </div>
+                    <div style="background: #fef3c7; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                        <h5 style="font-weight: 600; color: #1f2937; margin-bottom: 4px; font-size: 0.875rem;">💰 Cost:</h5>
+                        <p style="font-size: 0.875rem; color: #374151; margin: 0; font-weight: 500;">2.9% + $0.30 per successful transaction (no monthly fee)</p>
+                    </div>
+                    <div style="background: #d1fae5; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                        <h5 style="font-weight: 600; color: #1f2937; margin-bottom: 4px; font-size: 0.875rem;">🎯 Use Case:</h5>
+                        <p style="font-size: 0.875rem; color: #374151; margin: 0;">Processes payments when customers purchase AI pet portraits on canvas, mugs, or bundles. Triggers Printful order creation via webhooks.</p>
+                    </div>
+                    <div style="background: #e9d5ff; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                        <h5 style="font-weight: 600; color: #1f2937; margin-bottom: 4px; font-size: 0.875rem;">✨ Key Features:</h5>
+                        <ul style="font-size: 0.875rem; color: #374151; margin: 0; padding-left: 20px;">
+                            <li>Secure payment processing</li>
+                            <li>Checkout integration</li>
+                            <li>Webhook support for order fulfillment</li>
+                            <li>Subscription management</li>
+                            <li>Fraud protection</li>
+                            <li>Multi-currency support</li>
+                        </ul>
+                    </div>
+                    <div style="margin-top: 16px; padding-top: 16px; border-top: 2px solid #e5e7eb;">
+                        <h5 style="font-weight: 600; color: #1f2937; margin-bottom: 12px; font-size: 1rem; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px;">📊 Analytics & Charts</h5>
+                        
+                        <div style="margin-bottom: 16px;">
+                            <h6 style="font-weight: 600; color: #374151; margin-bottom: 6px; font-size: 0.875rem;">📈 Usage Trends (Last 7 Days)</h6>
+                            <div style="height: 100px; background: #f3f4f6; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 0.75rem;">
+                                Line Chart: Coming Soon - Configure service to enable
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 16px;">
+                            <h6 style="font-weight: 600; color: #374151; margin-bottom: 6px; font-size: 0.875rem;">💰 Cost Analysis</h6>
+                            <div style="height: 100px; background: #f3f4f6; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 0.75rem;">
+                                Bar Chart: Coming Soon - Configure service to enable
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 16px;">
+                            <h6 style="font-weight: 600; color: #374151; margin-bottom: 6px; font-size: 0.875rem;">⚡ Performance Metrics</h6>
+                            <div style="height: 100px; background: #f3f4f6; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 0.75rem;">
+                                Area Chart: Coming Soon - Configure service to enable
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 16px;">
+                            <h6 style="font-weight: 600; color: #374151; margin-bottom: 6px; font-size: 0.875rem;">📊 Growth Trends</h6>
+                            <div style="height: 100px; background: #f3f4f6; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 0.75rem;">
+                                Stacked Area Chart: Coming Soon - Configure service to enable
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Printful -->
+            <div class="service-card complete">
+                <div class="service-header" onclick="toggleServiceDetails(3)" style="cursor: pointer;">
+                    <div class="service-title">🎨 Printful</div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="service-status status-complete">✅ Complete</span>
+                        <span id="serviceToggle3" style="color: #6b7280; font-size: 1.2rem;">▶</span>
+                    </div>
+                </div>
+                <a href="https://www.printful.com/dashboard" target="_blank" class="btn btn-primary btn-full">Sign Up / Dashboard</a>
+                <a href="https://developers.printful.com/" target="_blank" class="btn btn-secondary btn-full">📚 Documentation</a>
+                <div class="api-keys">
+                    <div class="key-item" style="background: #d1fae5;">
+                        <div class="key-name">PRINTFUL_API_KEY</div>
+                        <div>BHDDF5JNfcukUvV5DzgpwH52eWDk5tvwCPPFLLbc</div>
+                    </div>
+                </div>
+                
+                <!-- Expandable Details -->
+                <div id="serviceDetails3" style="display: none; margin-top: 16px; padding-top: 16px; border-top: 2px solid #e5e7eb;">
+                    <h4 style="font-size: 1.125rem; font-weight: 600; color: #1f2937; margin-bottom: 12px;">📊 Service Details</h4>
+                    <div style="background: #dbeafe; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                        <h5 style="font-weight: 600; color: #1f2937; margin-bottom: 4px; font-size: 0.875rem;">What This Service Does:</h5>
+                        <p style="font-size: 0.875rem; color: #374151; margin: 0;">Print-on-demand fulfillment service that prints and ships AI-generated pet portraits on canvas, mugs, and other products.</p>
+                    </div>
+                    <div style="background: #fef3c7; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                        <h5 style="font-weight: 600; color: #1f2937; margin-bottom: 4px; font-size: 0.875rem;">💰 Cost:</h5>
+                        <p style="font-size: 0.875rem; color: #374151; margin: 0; font-weight: 500;">Per-item pricing (Canvas 12x12: ~$15, 16x20: ~$25, Mug: ~$8) + shipping</p>
+                    </div>
+                    <div style="background: #d1fae5; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                        <h5 style="font-weight: 600; color: #1f2937; margin-bottom: 4px; font-size: 0.875rem;">🎯 Use Case:</h5>
+                        <p style="font-size: 0.875rem; color: #374151; margin: 0;">Receives orders via API when customers purchase. Prints AI portraits on physical products and ships directly to customers, enabling 50%+ profit margins.</p>
+                    </div>
+                    <div style="background: #e9d5ff; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                        <h5 style="font-weight: 600; color: #1f2937; margin-bottom: 4px; font-size: 0.875rem;">✨ Key Features:</h5>
+                        <ul style="font-size: 0.875rem; color: #374151; margin: 0; padding-left: 20px;">
+                            <li>Print-on-demand fulfillment</li>
+                            <li>Canvas prints (12x12, 16x20)</li>
+                            <li>Mugs and other products</li>
+                            <li>Automatic shipping to customers</li>
+                            <li>Quality control</li>
+                            <li>Global shipping network</li>
+                        </ul>
+                    </div>
+                    <div style="margin-top: 16px; padding-top: 16px; border-top: 2px solid #e5e7eb;">
+                        <h5 style="font-weight: 600; color: #1f2937; margin-bottom: 12px; font-size: 1rem; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px;">📊 Analytics & Charts</h5>
+                        
+                        <div style="margin-bottom: 16px;">
+                            <h6 style="font-weight: 600; color: #374151; margin-bottom: 6px; font-size: 0.875rem;">📈 Usage Trends (Last 7 Days)</h6>
+                            <div style="height: 100px; background: #f3f4f6; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 0.75rem;">
+                                Line Chart: Coming Soon - Configure service to enable
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 16px;">
+                            <h6 style="font-weight: 600; color: #374151; margin-bottom: 6px; font-size: 0.875rem;">💰 Cost Analysis</h6>
+                            <div style="height: 100px; background: #f3f4f6; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 0.75rem;">
+                                Bar Chart: Coming Soon - Configure service to enable
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 16px;">
+                            <h6 style="font-weight: 600; color: #374151; margin-bottom: 6px; font-size: 0.875rem;">⚡ Performance Metrics</h6>
+                            <div style="height: 100px; background: #f3f4f6; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 0.75rem;">
+                                Area Chart: Coming Soon - Configure service to enable
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 16px;">
+                            <h6 style="font-weight: 600; color: #374151; margin-bottom: 6px; font-size: 0.875rem;">📊 Growth Trends</h6>
+                            <div style="height: 100px; background: #f3f4f6; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 0.75rem;">
+                                Stacked Area Chart: Coming Soon - Configure service to enable
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resend -->
+            <div class="service-card complete">
+                <div class="service-header" onclick="toggleServiceDetails(4)" style="cursor: pointer;">
+                    <div class="service-title">📧 Resend</div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="service-status status-active">✅ Complete</span>
+                        <span id="serviceToggle4" style="color: #6b7280; font-size: 1.2rem;">▶</span>
+                    </div>
+                </div>
+                <a href="https://resend.com/signup" target="_blank" class="btn btn-primary btn-full">Sign Up / Dashboard</a>
+                <a href="https://resend.com/docs" target="_blank" class="btn btn-secondary btn-full">📚 Documentation</a>
+                <div class="api-keys">
+                    <div class="key-item">
+                        <div class="key-name">RESEND_API_KEY</div>
+                        <div style="color: #059669; font-weight: 600;">re_NwySnmb2_APFjvHxKTFxLbBZ9owWfgGcX</div>
+                    </div>
+                </div>
+                
+                <!-- Expandable Details -->
+                <div id="serviceDetails4" style="display: none; margin-top: 16px; padding-top: 16px; border-top: 2px solid #e5e7eb;">
+                    <h4 style="font-size: 1.125rem; font-weight: 600; color: #1f2937; margin-bottom: 12px;">📊 Service Details</h4>
+                    <div style="background: #dbeafe; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                        <h5 style="font-weight: 600; color: #1f2937; margin-bottom: 4px; font-size: 0.875rem;">What This Service Does:</h5>
+                        <p style="font-size: 0.875rem; color: #374151; margin: 0;">Developer-friendly email API for sending transactional emails, order confirmations, and customer communications.</p>
+                    </div>
+                    <div style="background: #fef3c7; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                        <h5 style="font-weight: 600; color: #1f2937; margin-bottom: 4px; font-size: 0.875rem;">💰 Cost:</h5>
+                        <p style="font-size: 0.875rem; color: #374151; margin: 0; font-weight: 500;">Free: 100 emails/day | Pro: $20/month for 50,000 emails</p>
+                    </div>
+                    <div style="background: #d1fae5; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                        <h5 style="font-weight: 600; color: #1f2937; margin-bottom: 4px; font-size: 0.875rem;">🎯 Use Case:</h5>
+                        <p style="font-size: 0.875rem; color: #374151; margin: 0;">Sends order confirmations, shipping notifications, and thank-you emails to customers after they purchase pet portraits.</p>
+                    </div>
+                    <div style="background: #e9d5ff; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                        <h5 style="font-weight: 600; color: #1f2937; margin-bottom: 4px; font-size: 0.875rem;">✨ Key Features:</h5>
+                        <ul style="font-size: 0.875rem; color: #374151; margin: 0; padding-left: 20px;">
+                            <li>Transactional email API</li>
+                            <li>Order confirmation emails</li>
+                            <li>Email templates</li>
+                            <li>High deliverability rates</li>
+                            <li>React email support</li>
+                            <li>Email analytics</li>
+                        </ul>
+                    </div>
+                    <div style="margin-top: 16px; padding-top: 16px; border-top: 2px solid #e5e7eb;">
+                        <h5 style="font-weight: 600; color: #1f2937; margin-bottom: 12px; font-size: 1rem; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px;">📊 Analytics & Charts</h5>
+                        
+                        <div style="margin-bottom: 16px;">
+                            <h6 style="font-weight: 600; color: #374151; margin-bottom: 6px; font-size: 0.875rem;">📈 Usage Trends (Last 7 Days)</h6>
+                            <div style="height: 100px; background: #f3f4f6; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 0.75rem;">
+                                Line Chart: Coming Soon - Configure service to enable
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 16px;">
+                            <h6 style="font-weight: 600; color: #374151; margin-bottom: 6px; font-size: 0.875rem;">💰 Cost Analysis</h6>
+                            <div style="height: 100px; background: #f3f4f6; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 0.75rem;">
+                                Bar Chart: Coming Soon - Configure service to enable
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 16px;">
+                            <h6 style="font-weight: 600; color: #374151; margin-bottom: 6px; font-size: 0.875rem;">⚡ Performance Metrics</h6>
+                            <div style="height: 100px; background: #f3f4f6; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 0.75rem;">
+                                Area Chart: Coming Soon - Configure service to enable
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 16px;">
+                            <h6 style="font-weight: 600; color: #374151; margin-bottom: 6px; font-size: 0.875rem;">📊 Growth Trends</h6>
+                            <div style="height: 100px; background: #f3f4f6; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 0.75rem;">
+                                Stacked Area Chart: Coming Soon - Configure service to enable
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vercel -->
+            <div class="service-card">
+                <div class="service-header" onclick="toggleServiceDetails(5)" style="cursor: pointer;">
+                    <div class="service-title">🚀 Vercel</div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="service-status status-pending">⏳ Pending</span>
+                        <span id="serviceToggle5" style="color: #6b7280; font-size: 1.2rem;">▶</span>
+                    </div>
+                </div>
+                <a href="https://vercel.com/signup" target="_blank" class="btn btn-primary btn-full">Sign Up / Dashboard</a>
+                <a href="https://vercel.com/docs" target="_blank" class="btn btn-secondary btn-full">📚 Documentation</a>
+                
+                <!-- Expandable Details -->
+                <div id="serviceDetails5" style="display: none; margin-top: 16px; padding-top: 16px; border-top: 2px solid #e5e7eb;">
+                    <h4 style="font-size: 1.125rem; font-weight: 600; color: #1f2937; margin-bottom: 12px;">📊 Service Details</h4>
+                    <div style="background: #dbeafe; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                        <h5 style="font-weight: 600; color: #1f2937; margin-bottom: 4px; font-size: 0.875rem;">What This Service Does:</h5>
+                        <p style="font-size: 0.875rem; color: #374151; margin: 0;">Deployment platform for Next.js applications with automatic deployments, edge functions, and global CDN.</p>
+                    </div>
+                    <div style="background: #fef3c7; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                        <h5 style="font-weight: 600; color: #1f2937; margin-bottom: 4px; font-size: 0.875rem;">💰 Cost:</h5>
+                        <p style="font-size: 0.875rem; color: #374151; margin: 0; font-weight: 500;">Hobby (Free) | Pro: $20/month per user</p>
+                    </div>
+                    <div style="background: #d1fae5; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                        <h5 style="font-weight: 600; color: #1f2937; margin-bottom: 4px; font-size: 0.875rem;">🎯 Use Case:</h5>
+                        <p style="font-size: 0.875rem; color: #374151; margin: 0;">Hosts and deploys the Next.js e-commerce platform, making it accessible worldwide with fast load times.</p>
+                    </div>
+                    <div style="background: #e9d5ff; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                        <h5 style="font-weight: 600; color: #1f2937; margin-bottom: 4px; font-size: 0.875rem;">✨ Key Features:</h5>
+                        <ul style="font-size: 0.875rem; color: #374151; margin: 0; padding-left: 20px;">
+                            <li>Automatic deployments from GitHub</li>
+                            <li>Global CDN for fast loading</li>
+                            <li>Serverless functions</li>
+                            <li>Preview deployments</li>
+                            <li>Analytics and monitoring</li>
+                            <li>Custom domains</li>
+                        </ul>
+                    </div>
+                    <div style="margin-top: 16px; padding-top: 16px; border-top: 2px solid #e5e7eb;">
+                        <h5 style="font-weight: 600; color: #1f2937; margin-bottom: 12px; font-size: 1rem; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px;">📊 Analytics & Charts</h5>
+                        
+                        <div style="margin-bottom: 16px;">
+                            <h6 style="font-weight: 600; color: #374151; margin-bottom: 6px; font-size: 0.875rem;">📈 Usage Trends (Last 7 Days)</h6>
+                            <div style="height: 100px; background: #f3f4f6; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 0.75rem;">
+                                Line Chart: Coming Soon - Configure service to enable
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 16px;">
+                            <h6 style="font-weight: 600; color: #374151; margin-bottom: 6px; font-size: 0.875rem;">💰 Cost Analysis</h6>
+                            <div style="height: 100px; background: #f3f4f6; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 0.75rem;">
+                                Bar Chart: Coming Soon - Configure service to enable
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 16px;">
+                            <h6 style="font-weight: 600; color: #374151; margin-bottom: 6px; font-size: 0.875rem;">⚡ Performance Metrics</h6>
+                            <div style="height: 100px; background: #f3f4f6; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 0.75rem;">
+                                Area Chart: Coming Soon - Configure service to enable
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 16px;">
+                            <h6 style="font-weight: 600; color: #374151; margin-bottom: 6px; font-size: 0.875rem;">📊 Growth Trends</h6>
+                            <div style="height: 100px; background: #f3f4f6; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 0.75rem;">
+                                Stacked Area Chart: Coming Soon - Configure service to enable
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- GitHub -->
+            <div class="service-card complete">
+                <div class="service-header" onclick="toggleServiceDetails(6)" style="cursor: pointer;">
+                    <div class="service-title">🐙 GitHub</div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="service-status status-complete">✅ Complete</span>
+                        <span id="serviceToggle6" style="color: #6b7280; font-size: 1.2rem;">▶</span>
+                    </div>
+                </div>
+                <a href="https://github.com" target="_blank" class="btn btn-primary btn-full">Open GitHub</a>
+                <a href="https://docs.github.com" target="_blank" class="btn btn-secondary btn-full">📚 Documentation</a>
+                <div class="api-keys">
+                    <div class="key-item">
+                        <div class="key-name">Repository</div>
+                        <div style="color: #6b7280;">Use for app integrations</div>
+                    </div>
+                </div>
+                
+                <!-- Expandable Details -->
+                <div id="serviceDetails6" style="display: none; margin-top: 16px; padding-top: 16px; border-top: 2px solid #e5e7eb;">
+                    <h4 style="font-size: 1.125rem; font-weight: 600; color: #1f2937; margin-bottom: 12px;">📊 Service Details</h4>
+                    <div style="background: #dbeafe; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                        <h5 style="font-weight: 600; color: #1f2937; margin-bottom: 4px; font-size: 0.875rem;">What This Service Does:</h5>
+                        <p style="font-size: 0.875rem; color: #374151; margin: 0;">Version control and code hosting platform for managing project repositories, collaboration, and CI/CD.</p>
+                    </div>
+                    <div style="background: #fef3c7; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                        <h5 style="font-weight: 600; color: #1f2937; margin-bottom: 4px; font-size: 0.875rem;">💰 Cost:</h5>
+                        <p style="font-size: 0.875rem; color: #374151; margin: 0; font-weight: 500;">Free for public repos | Pro: $4/month for private repos</p>
+                    </div>
+                    <div style="background: #d1fae5; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                        <h5 style="font-weight: 600; color: #1f2937; margin-bottom: 4px; font-size: 0.875rem;">🎯 Use Case:</h5>
+                        <p style="font-size: 0.875rem; color: #374151; margin: 0;">Stores all project code, enables version control, and triggers automatic deployments to Vercel when code is pushed.</p>
+                    </div>
+                    <div style="background: #e9d5ff; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                        <h5 style="font-weight: 600; color: #1f2937; margin-bottom: 4px; font-size: 0.875rem;">✨ Key Features:</h5>
+                        <ul style="font-size: 0.875rem; color: #374151; margin: 0; padding-left: 20px;">
+                            <li>Git version control</li>
+                            <li>Code hosting and collaboration</li>
+                            <li>Issue tracking</li>
+                            <li>Pull requests and code reviews</li>
+                            <li>GitHub Actions (CI/CD)</li>
+                            <li>Project management</li>
+                        </ul>
+                    </div>
+                    <div style="margin-top: 16px; padding-top: 16px; border-top: 2px solid #e5e7eb;">
+                        <h5 style="font-weight: 600; color: #1f2937; margin-bottom: 12px; font-size: 1rem; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px;">📊 Analytics & Charts</h5>
+                        
+                        <div style="margin-bottom: 16px;">
+                            <h6 style="font-weight: 600; color: #374151; margin-bottom: 6px; font-size: 0.875rem;">📈 Usage Trends (Last 7 Days)</h6>
+                            <div style="height: 100px; background: #f3f4f6; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 0.75rem;">
+                                Line Chart: Coming Soon
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 16px;">
+                            <h6 style="font-weight: 600; color: #374151; margin-bottom: 6px; font-size: 0.875rem;">💰 Cost Analysis</h6>
+                            <div style="height: 100px; background: #f3f4f6; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 0.75rem;">
+                                Bar Chart: Coming Soon
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 16px;">
+                            <h6 style="font-weight: 600; color: #374151; margin-bottom: 6px; font-size: 0.875rem;">⚡ Performance Metrics</h6>
+                            <div style="height: 100px; background: #f3f4f6; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 0.75rem;">
+                                Area Chart: Coming Soon
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 16px;">
+                            <h6 style="font-weight: 600; color: #374151; margin-bottom: 6px; font-size: 0.875rem;">📊 Growth Trends</h6>
+                            <div style="height: 100px; background: #f3f4f6; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 0.75rem;">
+                                Stacked Area Chart: Coming Soon
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cursor Pro -->
+            <div class="service-card complete">
+                <div class="service-header" onclick="toggleServiceDetails(7)" style="cursor: pointer;">
+                    <div class="service-title">⌨️ Cursor Pro</div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="service-status status-complete">✅ Complete</span>
+                        <span id="serviceToggle7" style="color: #6b7280; font-size: 1.2rem;">▶</span>
+                    </div>
+                </div>
+                <a href="https://cursor.sh" target="_blank" class="btn btn-primary btn-full">Open Cursor</a>
+                <a href="https://cursor.sh/pricing" target="_blank" class="btn" style="background: #10b981; color: white; width: 100%; margin-bottom: 8px; padding: 10px 20px; border-radius: 8px; text-decoration: none; text-align: center; font-weight: 500; display: block;">💳 Manage Subscription</a>
+                <a href="https://docs.cursor.sh" target="_blank" class="btn btn-secondary btn-full">📚 Documentation</a>
+                
+                <!-- Expandable Details -->
+                <div id="serviceDetails7" style="display: none; margin-top: 16px; padding-top: 16px; border-top: 2px solid #e5e7eb;">
+                    <h4 style="font-size: 1.125rem; font-weight: 600; color: #1f2937; margin-bottom: 12px;">📊 Service Details</h4>
+                    <div style="background: #dbeafe; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                        <h5 style="font-weight: 600; color: #1f2937; margin-bottom: 4px; font-size: 0.875rem;">What This Service Does:</h5>
+                        <p style="font-size: 0.875rem; color: #374151; margin: 0;">AI-powered code editor that uses advanced language models to help write, edit, and understand code faster.</p>
+                    </div>
+                    <div style="background: #fef3c7; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                        <h5 style="font-weight: 600; color: #1f2937; margin-bottom: 4px; font-size: 0.875rem;">💰 Cost:</h5>
+                        <p style="font-size: 0.875rem; color: #374151; margin: 0; font-weight: 500;">Pro Plan: $20/month</p>
+                    </div>
+                    <div style="background: #d1fae5; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                        <h5 style="font-weight: 600; color: #1f2937; margin-bottom: 4px; font-size: 0.875rem;">🎯 Use Case:</h5>
+                        <p style="font-size: 0.875rem; color: #374151; margin: 0;">Primary development tool for building the Fur & Fame platform, providing AI assistance for coding, debugging, and project management.</p>
+                    </div>
+                    <div style="background: #e9d5ff; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                        <h5 style="font-weight: 600; color: #1f2937; margin-bottom: 4px; font-size: 0.875rem;">✨ Key Features:</h5>
+                        <ul style="font-size: 0.875rem; color: #374151; margin: 0; padding-left: 20px;">
+                            <li>AI code completion and suggestions</li>
+                            <li>Chat with codebase for understanding</li>
+                            <li>Multi-file editing capabilities</li>
+                            <li>Code refactoring assistance</li>
+                            <li>Bug detection and fixes</li>
+                            <li>Fast code generation</li>
+                        </ul>
+                    </div>
+                    <div style="margin-top: 16px; padding-top: 16px; border-top: 2px solid #e5e7eb;">
+                        <h5 style="font-weight: 600; color: #1f2937; margin-bottom: 12px; font-size: 1rem; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px;">📊 Analytics & Charts</h5>
+                        
+                        <div style="margin-bottom: 16px;">
+                            <h6 style="font-weight: 600; color: #374151; margin-bottom: 6px; font-size: 0.875rem;">📈 Usage Trends (Last 7 Days)</h6>
+                            <div style="height: 100px; background: #f3f4f6; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 0.75rem;">
+                                Line Chart: Coming Soon
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 16px;">
+                            <h6 style="font-weight: 600; color: #374151; margin-bottom: 6px; font-size: 0.875rem;">💰 Cost Analysis</h6>
+                            <div style="height: 100px; background: #f3f4f6; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 0.75rem;">
+                                Bar Chart: Coming Soon
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 16px;">
+                            <h6 style="font-weight: 600; color: #374151; margin-bottom: 6px; font-size: 0.875rem;">⚡ Performance Metrics</h6>
+                            <div style="height: 100px; background: #f3f4f6; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 0.75rem;">
+                                Area Chart: Coming Soon
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 16px;">
+                            <h6 style="font-weight: 600; color: #374151; margin-bottom: 6px; font-size: 0.875rem;">📊 Growth Trends</h6>
+                            <div style="height: 100px; background: #f3f4f6; border-radius: 8px; border: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: center; color: #9ca3af; font-size: 0.75rem;">
+                                Stacked Area Chart: Coming Soon
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="quick-actions">
+            <h2 style="font-size: 1.5rem; margin-bottom: 16px; color: #1f2937;">⚡ Quick Actions</h2>
+            <div class="actions-grid">
+                <a href="https://github.com" target="_blank" class="btn btn-primary">Open GitHub</a>
+                <a href="https://supabase.com/dashboard" target="_blank" class="btn btn-primary">Open Supabase</a>
+                <a href="https://dashboard.stripe.com" target="_blank" class="btn btn-primary">Open Stripe</a>
+                <a href="https://vercel.com/dashboard" target="_blank" class="btn btn-primary">Open Vercel</a>
+                <a href="https://fal.ai/dashboard" target="_blank" class="btn btn-primary">Open fal.ai</a>
+                <a href="https://www.printful.com/dashboard" target="_blank" class="btn btn-primary">Open Printful</a>
+                <a href="https://resend.com/emails" target="_blank" class="btn btn-primary">Open Resend</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // fal.ai Usage Monitoring
+        let usageData = {
+            balance: 0,
+            todayUsage: 0,
+            monthUsage: 0,
+            alertThreshold: 10.00,
+            dailyUsage: [0, 0, 0, 0, 0, 0, 0], // Last 7 days
+            history: []
+        };
+
+        // Load saved data from localStorage
+        function loadUsageData() {
+            const saved = localStorage.getItem('falUsageData');
+            if (saved) {
+                usageData = JSON.parse(saved);
+            }
+            updateDisplay();
+        }
+
+        // Save data to localStorage
+        function saveUsageData() {
+            localStorage.setItem('falUsageData', JSON.stringify(usageData));
+            updateDisplay();
+        }
+
+        // Update display
+        function updateDisplay() {
+            document.getElementById('falBalance').textContent = '$' + usageData.balance.toFixed(2);
+            document.getElementById('todayUsage').textContent = '$' + usageData.todayUsage.toFixed(2);
+            document.getElementById('monthUsage').textContent = '$' + usageData.monthUsage.toFixed(2);
+            document.getElementById('alertThreshold').value = usageData.alertThreshold;
+
+            // Check for low balance alert
+            checkAlerts();
+            updateChart();
+            updateHistory();
+        }
+
+        // Check for alerts
+        function checkAlerts() {
+            const alertBox = document.getElementById('alertBox');
+            const alertMessage = document.getElementById('alertMessage');
+            
+            if (usageData.balance <= usageData.alertThreshold) {
+                alertBox.style.display = 'block';
+                alertMessage.textContent = `Low Balance! $${usageData.balance.toFixed(2)} remaining`;
+            } else {
+                alertBox.style.display = 'none';
+            }
+        }
+
+        // Update usage data
+        function updateUsage() {
+            const balance = parseFloat(document.getElementById('balanceInput').value) || 0;
+            const today = parseFloat(document.getElementById('todayInput').value) || 0;
+            const month = parseFloat(document.getElementById('monthInput').value) || 0;
+            const threshold = parseFloat(document.getElementById('alertThreshold').value) || 10.00;
+
+            usageData.balance = balance;
+            usageData.todayUsage = today;
+            usageData.monthUsage = month;
+            usageData.alertThreshold = threshold;
+
+            // Add today's usage to history
+            const todayDate = new Date().toISOString().split('T')[0];
+            usageData.history.unshift({
+                date: todayDate,
+                usage: today,
+                balance: balance
+            });
+            
+            // Keep only last 30 days
+            if (usageData.history.length > 30) {
+                usageData.history = usageData.history.slice(0, 30);
+            }
+
+            // Update daily usage array (shift and add today)
+            usageData.dailyUsage.shift();
+            usageData.dailyUsage.push(today);
+
+            saveUsageData();
+            
+            // Clear inputs
+            document.getElementById('balanceInput').value = '';
+            document.getElementById('todayInput').value = '';
+            document.getElementById('monthInput').value = '';
+        }
+
+        // Update chart
+        let usageChart = null;
+        function updateChart() {
+            const ctx = document.getElementById('usageChart');
+            if (!ctx) return;
+
+            const labels = [];
+            const today = new Date();
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+            }
+
+            if (usageChart) {
+                usageChart.destroy();
+            }
+
+            usageChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Daily Usage ($)',
+                        data: usageData.dailyUsage,
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value.toFixed(2);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update history table
+        function updateHistory() {
+            const tbody = document.getElementById('usageHistory');
+            if (usageData.history.length === 0) {
+                tbody.innerHTML = '<tr style="border-bottom: 1px solid #e5e7eb;"><td style="padding: 12px; color: #6b7280;">No data yet</td><td style="padding: 12px; text-align: right; color: #6b7280;">-</td><td style="padding: 12px; text-align: right; color: #6b7280;">-</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = usageData.history.slice(0, 7).map(item => {
+                return `
+                    <tr style="border-bottom: 1px solid #e5e7eb;">
+                        <td style="padding: 12px; color: #6b7280;">${item.date}</td>
+                        <td style="padding: 12px; text-align: right; color: #6b7280;">$${item.usage.toFixed(2)}</td>
+                        <td style="padding: 12px; text-align: right; color: #6b7280;">$${item.balance.toFixed(2)}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Fetch balance from fal.ai API via Next.js proxy
+        async function fetchFalBalance() {
+            const statusDiv = document.getElementById('fetchStatus');
+            if (statusDiv) {
+                statusDiv.style.display = 'block';
+                statusDiv.textContent = 'Fetching balance...';
+                statusDiv.style.background = '#dbeafe';
+                statusDiv.style.color = '#1e40af';
+            }
+
+            const apiBase = getApiBaseUrl();
+            const apiUrl = `${apiBase}/api/fal/balance`;
+
+            try {
+                // Use Next.js API route to avoid CORS issues
+                const response = await fetch(apiUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    mode: 'cors'
+                }).catch((fetchError) => {
+                    // Network error - server not reachable
+                    throw new Error(`Network error: ${fetchError.message}. Make sure Next.js server is running on http://localhost:3000`);
+                });
+
+                if (!response || !response.ok) {
+                    const statusText = response ? `${response.status}: ${response.statusText}` : 'No response';
+                    throw new Error(`HTTP error ${statusText}`);
+                }
+
+                const data = await response.json().catch((jsonError) => {
+                    throw new Error(`Invalid response format: ${jsonError.message}`);
+                });
+                
+                // Check if manual entry is required
+                if (data.manualEntry) {
+                        if (statusDiv) {
+                            statusDiv.textContent = data.message || 'Balance API not available. Please enter manually.';
+                            statusDiv.style.background = '#fef3c7';
+                            statusDiv.style.color = '#92400e';
+                        }
+                        // Auto-populate form fields with 0 and open billing page
+                        document.getElementById('balanceInput').value = '';
+                        document.getElementById('todayInput').value = '';
+                        document.getElementById('monthInput').value = '';
+                        window.open('https://fal.ai/dashboard/billing', '_blank');
+                        return false;
+                    }
+                    
+                    // Auto-populate form fields with fetched data
+                    if (data.balance !== undefined) {
+                        document.getElementById('balanceInput').value = data.balance.toFixed(2);
+                    }
+                    if (data.todayUsage !== undefined) {
+                        document.getElementById('todayInput').value = data.todayUsage.toFixed(2);
+                    }
+                    if (data.monthUsage !== undefined) {
+                        document.getElementById('monthInput').value = data.monthUsage.toFixed(2);
+                    }
+
+                    // Also update the display
+                    usageData.balance = data.balance || 0;
+                    usageData.todayUsage = data.todayUsage || 0;
+                    usageData.monthUsage = data.monthUsage || 0;
+                    
+                    saveUsageData();
+                    updateLastFetchTime();
+                    
+                    // Show success message
+                    if (statusDiv) {
+                        statusDiv.textContent = data.message || 'Balance fetched successfully! Click "Update Data" to save.';
+                        statusDiv.style.background = '#d1fae5';
+                        statusDiv.style.color = '#065f46';
+                    }
+                    return true;
+                // Response is ok, data already parsed above
+            } catch (error: any) {
+                console.error('Error fetching fal.ai balance:', error);
+                if (statusDiv) {
+                    let errorMsg = 'Error fetching data. ';
+                    if (error.message && error.message.includes('Failed to fetch')) {
+                        errorMsg += 'Make sure Next.js server is running on http://localhost:3000. ';
+                        errorMsg += 'If opening HTML file directly, access via http://localhost:3000/accounts instead.';
+                    } else {
+                        errorMsg += error.message || 'Please enter data manually.';
+                    }
+                    statusDiv.textContent = errorMsg;
+                    statusDiv.style.background = '#fee2e2';
+                    statusDiv.style.color = '#dc2626';
+                }
+                return false;
+            }
+        }
+
+
+        // Show fetch status message
+        function showFetchStatus(message, type) {
+            const statusDiv = document.getElementById('fetchStatus');
+            if (statusDiv) {
+                statusDiv.textContent = message;
+                statusDiv.style.display = 'block';
+                if (type === 'success') {
+                    statusDiv.style.background = '#d1fae5';
+                    statusDiv.style.color = '#065f46';
+                } else if (type === 'info') {
+                    statusDiv.style.background = '#dbeafe';
+                    statusDiv.style.color = '#1e40af';
+                } else {
+                    statusDiv.style.background = '#fee2e2';
+                    statusDiv.style.color = '#dc2626';
+                }
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 8000);
+            }
+        }
+
+        // Auto-refresh functionality
+        let autoRefreshInterval = null;
+        function toggleAutoRefresh() {
+            const btn = document.getElementById('autoRefreshBtn');
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+                btn.textContent = 'Enable Auto-Refresh';
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-secondary');
+            } else {
+                fetchFalBalance(); // Fetch immediately
+                autoRefreshInterval = setInterval(function() {
+                    fetchFalBalance();
+                }, 300000); // Every 5 minutes
+                btn.textContent = 'Disable Auto-Refresh';
+                btn.classList.remove('btn-secondary');
+                btn.classList.add('btn-primary');
+            }
+        }
+
+        // Update last fetch time
+        function updateLastFetchTime() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString();
+            document.getElementById('lastFetch').textContent = `Last fetched: ${timeStr}`;
+        }
+
+        // Initialize on page load
+        // Supabase Usage Monitoring
+        const SUPABASE_LIMITS = {
+            database: 500, // MB
+            storage: 1024, // MB (1GB)
+            bandwidth: 2 // GB
+        };
+        const ALERT_THRESHOLD = 0.8; // 80%
+
+        let supabaseUsage = {
+            database: 0, // MB
+            storage: 0, // MB
+            bandwidth: 0, // GB
+            history: {
+                database: [0, 0, 0, 0, 0, 0, 0], // Last 7 days
+                storage: [0, 0, 0, 0, 0, 0, 0],
+                bandwidth: [0, 0, 0, 0, 0, 0, 0]
+            },
+            lastUpdate: null
+        };
+
+        let dbChart = null;
+        let storageChart = null;
+        let bandwidthChart = null;
+
+        // Load saved Supabase usage data
+        function loadSupabaseUsage() {
+            const saved = localStorage.getItem('supabaseUsageData');
+            if (saved) {
+                supabaseUsage = JSON.parse(saved);
+            }
+            updateSupabaseDisplay();
+        }
+
+        // Save Supabase usage data
+        function saveSupabaseUsage() {
+            localStorage.setItem('supabaseUsageData', JSON.stringify(supabaseUsage));
+            updateSupabaseDisplay();
+        }
+
+        // Update Supabase display
+        function updateSupabaseDisplay() {
+            // Update stats
+            document.getElementById('dbUsage').textContent = supabaseUsage.database.toFixed(1) + ' MB';
+            document.getElementById('storageUsage').textContent = supabaseUsage.storage.toFixed(1) + ' MB';
+            document.getElementById('bandwidthUsage').textContent = supabaseUsage.bandwidth.toFixed(2) + ' GB';
+
+            // Update progress bars
+            const dbPercent = (supabaseUsage.database / SUPABASE_LIMITS.database) * 100;
+            const storagePercent = (supabaseUsage.storage / SUPABASE_LIMITS.storage) * 100;
+            const bandwidthPercent = (supabaseUsage.bandwidth / SUPABASE_LIMITS.bandwidth) * 100;
+
+            document.getElementById('dbProgress').style.width = Math.min(dbPercent, 100) + '%';
+            document.getElementById('storageProgress').style.width = Math.min(storagePercent, 100) + '%';
+            document.getElementById('bandwidthProgress').style.width = Math.min(bandwidthPercent, 100) + '%';
+
+            // Update progress bar colors based on usage
+            updateProgressColor('dbProgress', dbPercent);
+            updateProgressColor('storageProgress', storagePercent);
+            updateProgressColor('bandwidthProgress', bandwidthPercent);
+
+            // Update stat box backgrounds
+            updateStatBoxColor('dbStatBox', dbPercent);
+            updateStatBoxColor('storageStatBox', storagePercent);
+            updateStatBoxColor('bandwidthStatBox', bandwidthPercent);
+
+            // Check for alerts
+            checkSupabaseAlerts();
+
+            // Update charts
+            updateSupabaseCharts();
+
+            // Update last update time
+            if (supabaseUsage.lastUpdate) {
+                document.getElementById('supabaseLastUpdate').textContent = 'Last updated: ' + supabaseUsage.lastUpdate;
+            }
+        }
+
+        // Update progress bar color
+        function updateProgressColor(elementId, percent) {
+            const element = document.getElementById(elementId);
+            if (percent >= 80) {
+                element.style.background = '#ef4444'; // Red
+            } else if (percent >= 60) {
+                element.style.background = '#f59e0b'; // Amber
+            } else {
+                // Keep original color
+            }
+        }
+
+        // Update stat box background color
+        function updateStatBoxColor(elementId, percent) {
+            const element = document.getElementById(elementId);
+            if (percent >= 80) {
+                element.style.background = '#fee2e2'; // Light red
+            } else if (percent >= 60) {
+                element.style.background = '#fef3c7'; // Light amber
+            }
+        }
+
+        // Check for Supabase alerts
+        function checkSupabaseAlerts() {
+            const alertBox = document.getElementById('supabaseAlertBox');
+            const alertMessage = document.getElementById('supabaseAlertMessage');
+            const statusElement = document.getElementById('supabaseStatus');
+
+            const dbPercent = (supabaseUsage.database / SUPABASE_LIMITS.database) * 100;
+            const storagePercent = (supabaseUsage.storage / SUPABASE_LIMITS.storage) * 100;
+            const bandwidthPercent = (supabaseUsage.bandwidth / SUPABASE_LIMITS.bandwidth) * 100;
+
+            const alerts = [];
+            if (dbPercent >= ALERT_THRESHOLD * 100) {
+                alerts.push(`Database: ${supabaseUsage.database.toFixed(1)}MB / ${SUPABASE_LIMITS.database}MB (${dbPercent.toFixed(1)}%)`);
+            }
+            if (storagePercent >= ALERT_THRESHOLD * 100) {
+                alerts.push(`Storage: ${supabaseUsage.storage.toFixed(1)}MB / ${SUPABASE_LIMITS.storage}MB (${storagePercent.toFixed(1)}%)`);
+            }
+            if (bandwidthPercent >= ALERT_THRESHOLD * 100) {
+                alerts.push(`Bandwidth: ${supabaseUsage.bandwidth.toFixed(2)}GB / ${SUPABASE_LIMITS.bandwidth}GB (${bandwidthPercent.toFixed(1)}%)`);
+            }
+
+            if (alerts.length > 0) {
+                alertBox.style.display = 'block';
+                alertMessage.textContent = 'Approaching free tier limits: ' + alerts.join(' | ');
+                statusElement.textContent = '⚠️ Warning';
+                statusElement.style.color = '#ef4444';
+            } else if (dbPercent >= 100 || storagePercent >= 100 || bandwidthPercent >= 100) {
+                alertBox.style.display = 'block';
+                alertMessage.textContent = 'Free tier limits exceeded! Upgrade to Pro plan immediately.';
+                statusElement.textContent = '🚨 Critical';
+                statusElement.style.color = '#dc2626';
+            } else {
+                alertBox.style.display = 'none';
+                statusElement.textContent = '✅ Safe';
+                statusElement.style.color = '#10b981';
+            }
+        }
+
+        // Get API base URL - works for both localhost and file://
+        function getApiBaseUrl() {
+            // If we're on localhost:3000, use relative URL
+            if (window.location.hostname === 'localhost' && window.location.port === '3000') {
+                return '';
+            }
+            // Otherwise, use full localhost:3000 URL
+            return 'http://localhost:3000';
+        }
+
+        // Fetch Supabase usage from API (opens dashboard since API not available)
+        async function fetchSupabaseUsage() {
+            const statusDiv = document.getElementById('supabaseFetchStatus');
+            
+            // Open Supabase dashboard in new tab
+            window.open('https://supabase.com/dashboard/project/kanhbrdiagogexsyfkkl/settings/usage', '_blank');
+            
+            if (statusDiv) {
+                statusDiv.style.display = 'block';
+                statusDiv.textContent = 'Supabase usage API not available. Opened dashboard - please check usage and enter manually below.';
+                statusDiv.style.background = '#fef3c7';
+                statusDiv.style.color = '#92400e';
+            }
+
+            // Try to fetch anyway (will return manual entry message)
+            const apiBase = getApiBaseUrl();
+            const apiUrl = `${apiBase}/api/supabase/usage`;
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    mode: 'cors'
+                }).catch(() => {
+                    // If fetch fails, that's okay - we already opened the dashboard
+                    return null;
+                });
+
+                if (response && response.ok) {
+                    const data = await response.json();
+                    if (statusDiv && data.message) {
+                        statusDiv.textContent = data.message;
+                    }
+                }
+            } catch (error) {
+                // Ignore errors - we've already opened the dashboard
+                console.log('Supabase usage API not available (expected)');
+            }
+
+            setTimeout(() => {
+                if (statusDiv) {
+                    statusDiv.style.display = 'none';
+                }
+            }, 8000);
+        }
+
+        // Update Supabase usage
+        function updateSupabaseUsage() {
+            const db = parseFloat(document.getElementById('dbInput').value) || 0;
+            const storage = parseFloat(document.getElementById('storageInput').value) || 0;
+            const bandwidth = parseFloat(document.getElementById('bandwidthInput').value) || 0;
+
+            supabaseUsage.database = Math.min(db, SUPABASE_LIMITS.database);
+            supabaseUsage.storage = Math.min(storage, SUPABASE_LIMITS.storage);
+            supabaseUsage.bandwidth = Math.min(bandwidth, SUPABASE_LIMITS.bandwidth);
+
+            // Add to history (shift and add today)
+            supabaseUsage.history.database.shift();
+            supabaseUsage.history.database.push(supabaseUsage.database);
+            supabaseUsage.history.storage.shift();
+            supabaseUsage.history.storage.push(supabaseUsage.storage);
+            supabaseUsage.history.bandwidth.shift();
+            supabaseUsage.history.bandwidth.push(supabaseUsage.bandwidth);
+
+            supabaseUsage.lastUpdate = new Date().toLocaleString();
+
+            saveSupabaseUsage();
+
+            // Clear inputs
+            document.getElementById('dbInput').value = '';
+            document.getElementById('storageInput').value = '';
+            document.getElementById('bandwidthInput').value = '';
+        }
+
+        // Update Supabase charts
+        function updateSupabaseCharts() {
+            if (typeof Chart === 'undefined') return;
+
+            const labels = [];
+            const today = new Date();
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+            }
+
+            // Database Chart
+            const dbCtx = document.getElementById('dbChart');
+            if (dbCtx) {
+                if (dbChart) dbChart.destroy();
+                dbChart = new Chart(dbCtx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Database (MB)',
+                            data: supabaseUsage.history.database,
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }, {
+                            label: 'Limit',
+                            data: Array(7).fill(SUPABASE_LIMITS.database),
+                            borderColor: '#ef4444',
+                            borderDash: [5, 5],
+                            borderWidth: 2,
+                            fill: false
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: { display: true, position: 'top' }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: SUPABASE_LIMITS.database * 1.1
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Storage Chart
+            const storageCtx = document.getElementById('storageChart');
+            if (storageCtx) {
+                if (storageChart) storageChart.destroy();
+                storageChart = new Chart(storageCtx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Storage (MB)',
+                            data: supabaseUsage.history.storage,
+                            borderColor: '#f59e0b',
+                            backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }, {
+                            label: 'Limit',
+                            data: Array(7).fill(SUPABASE_LIMITS.storage),
+                            borderColor: '#ef4444',
+                            borderDash: [5, 5],
+                            borderWidth: 2,
+                            fill: false
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: { display: true, position: 'top' }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: SUPABASE_LIMITS.storage * 1.1
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Bandwidth Chart
+            const bandwidthCtx = document.getElementById('bandwidthChart');
+            if (bandwidthCtx) {
+                if (bandwidthChart) bandwidthChart.destroy();
+                bandwidthChart = new Chart(bandwidthCtx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Bandwidth (GB)',
+                            data: supabaseUsage.history.bandwidth,
+                            borderColor: '#6366f1',
+                            backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }, {
+                            label: 'Limit',
+                            data: Array(7).fill(SUPABASE_LIMITS.bandwidth),
+                            borderColor: '#ef4444',
+                            borderDash: [5, 5],
+                            borderWidth: 2,
+                            fill: false
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: { display: true, position: 'top' }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: SUPABASE_LIMITS.bandwidth * 1.1
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // Copy Server Command
+        function copyServerCommand(event) {
+            const command = 'cd "c:\\Users\\ccate\\Fur_and_Fame"; if (-not (Test-Path "node_modules\\.bin\\next.cmd")) { npm install }; npx next dev';
+            const btn = event ? event.target : document.querySelector('button[onclick="copyServerCommand()"]');
+            
+            // Try modern clipboard API first
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(command).then(() => {
+                    showCopySuccess(btn);
+                }).catch(() => {
+                    // Fallback to old method
+                    fallbackCopyTextToClipboard(command, btn);
+                });
+            } else {
+                // Fallback to old method
+                fallbackCopyTextToClipboard(command, btn);
+            }
+        }
+
+        // Fallback copy method for browsers that don't support clipboard API
+        function fallbackCopyTextToClipboard(text, btn) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-999999px";
+            textArea.style.top = "-999999px";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    showCopySuccess(btn);
+                } else {
+                    alert('Copy failed. Please manually copy: ' + text);
+                }
+            } catch (err) {
+                alert('Copy failed. Please manually copy: ' + text);
+            }
+            
+            document.body.removeChild(textArea);
+        }
+
+        function showCopySuccess(btn) {
+            if (btn) {
+                const originalText = btn.textContent;
+                btn.textContent = '✓ Copied!';
+                btn.style.background = 'rgba(16, 185, 129, 0.3)';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.style.background = 'rgba(255,255,255,0.2)';
+                }, 2000);
+            }
+        }
+
+        // Start Server Function
+        function startServer() {
+            updateServerStatus('Starting...');
+            
+            // Show instructions with copy-paste command
+            const message = `🚀 Start Next.js Server
+
+Choose how to start the server:
+
+1. EASIEST: Double-click "start-server.bat" in your project folder
+   (This will open a PowerShell window running the server)
+
+2. COPY & PASTE (PowerShell):
+   Open PowerShell, then copy and paste the command above
+   (It includes the path navigation - just paste and press Enter)
+
+3. ALTERNATIVE: Right-click "start-server.ps1" → "Run with PowerShell"
+
+The server will start on http://localhost:3000
+Keep the window open while developing.`;
+
+            alert(message);
+            
+            // Try to trigger file system access (may not work due to browser security)
+            // But we've provided clear instructions above
+            updateServerStatus('See instructions above');
+            
+            // Check status after a delay
+            setTimeout(() => {
+                checkServerStatus();
+            }, 3000);
+        }
+
+        // Check if server is running
+        function checkServerStatus() {
+            updateServerStatus('Checking...');
+            const statusEl = document.getElementById('serverStatus');
+            if (statusEl) {
+                statusEl.style.background = 'rgba(255,255,255,0.1)';
+            }
+
+            // Create a timeout promise
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Timeout')), 3000);
+            });
+
+            // Try to fetch from the API endpoint
+            const fetchPromise = fetch('http://localhost:3000/api/fal/balance', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }).catch(err => {
+                // If fetch fails, try no-cors as fallback
+                return fetch('http://localhost:3000', { 
+                    method: 'HEAD',
+                    mode: 'no-cors'
+                }).then(() => {
+                    // no-cors always resolves, so return a fake success
+                    return { ok: true, status: 200, _noCors: true };
+                }).catch(() => {
+                    throw err;
+                });
+            });
+
+            // Race between fetch and timeout
+            Promise.race([fetchPromise, timeoutPromise])
+                .then((response) => {
+                    // If we get any response (even error status), server is running
+                    if (response && (response.status >= 200 || response._noCors)) {
+                        updateServerStatus('Running ✅');
+                        if (statusEl) {
+                            statusEl.style.background = 'rgba(16, 185, 129, 0.3)';
+                            statusEl.style.color = 'rgba(255,255,255,0.95)';
+                        }
+                    } else {
+                        throw new Error('Invalid response');
+                    }
+                })
+                .catch((error) => {
+                    // Check if it's a CORS issue (which means server IS running)
+                    if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+                        // Try no-cors check - if this works, server is running but CORS blocked the first request
+                        fetch('http://localhost:3000', { 
+                            method: 'HEAD',
+                            mode: 'no-cors'
+                        })
+                        .then(() => {
+                            // no-cors always succeeds if server is reachable
+                            updateServerStatus('Running ✅ (CORS)');
+                            if (statusEl) {
+                                statusEl.style.background = 'rgba(16, 185, 129, 0.3)';
+                                statusEl.style.color = 'rgba(255,255,255,0.95)';
+                            }
+                        })
+                        .catch(() => {
+                            updateServerStatus('Not Running');
+                            if (statusEl) {
+                                statusEl.style.background = 'rgba(255,255,255,0.1)';
+                                statusEl.style.color = 'rgba(255,255,255,0.9)';
+                            }
+                        });
+                    } else {
+                        updateServerStatus('Not Running');
+                        if (statusEl) {
+                            statusEl.style.background = 'rgba(255,255,255,0.1)';
+                            statusEl.style.color = 'rgba(255,255,255,0.9)';
+                        }
+                    }
+                });
+        }
+
+        function updateServerStatus(status) {
+            const statusEl = document.getElementById('serverStatus');
+            if (statusEl) {
+                statusEl.textContent = 'Server Status: ' + status;
+            }
+        }
+
+        // Check server status on load and every 5 seconds
+        // Toggle service details
+        function toggleServiceDetails(index) {
+            const detailsDiv = document.getElementById('serviceDetails' + index);
+            const toggleSpan = document.getElementById('serviceToggle' + index);
+            
+            if (detailsDiv && toggleSpan) {
+                if (detailsDiv.style.display === 'none' || detailsDiv.style.display === '') {
+                    detailsDiv.style.display = 'block';
+                    toggleSpan.textContent = '▼';
+                } else {
+                    detailsDiv.style.display = 'none';
+                    toggleSpan.textContent = '▶';
+                }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadUsageData();
+            loadSupabaseUsage();
+            
+            // Check server status
+            checkServerStatus();
+            setInterval(checkServerStatus, 5000);
+            
+            // Try to fetch balance automatically on load (optional)
+            // Uncomment to enable:
+            // fetchFalBalance().then(() => updateLastFetchTime());
+        });
+    </script>
+</body>
+</html>
+

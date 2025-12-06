@@ -1,0 +1,33 @@
+===========================================
+HOW TO OPEN THE ACCOUNTS DASHBOARD
+===========================================
+
+The HTML file needs to open in a WEB BROWSER, not in Cursor/VS Code!
+
+METHOD 1: Double-click the batch file
+   → Double-click: open-accounts.bat
+   → This will open the dashboard in your default browser
+
+METHOD 2: Right-click the HTML file
+   → Right-click on: open-accounts.html
+   → Select: "Open with"
+   → Choose: Your web browser (Chrome, Edge, Firefox, etc.)
+
+METHOD 3: Drag and drop
+   → Drag open-accounts.html
+   → Drop it into an open browser window
+
+METHOD 4: Run PowerShell script
+   → Right-click: open-dashboard.ps1
+   → Select: "Run with PowerShell"
+
+METHOD 5: From browser address bar
+   → Open your browser
+   → Type: file:///C:/Users/ccate/Fur_and_Fame/open-accounts.html
+   → Press Enter
+
+===========================================
+IMPORTANT: Don't open it in Cursor/VS Code!
+The file must open in a web browser to see the GUI.
+===========================================
+

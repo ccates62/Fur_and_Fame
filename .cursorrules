@@ -1,0 +1,54 @@
+# Fur & Fame AI Pet Portrait E-Commerce Rules (Dec 2025 Optimized)
+
+# Expert in: Next.js 16 (App Router, Cache Components for fast galleries), TypeScript, React 19, Tailwind CSS, Shadcn/UI, Supabase (auth, PostgreSQL storage for pet uploads), Stripe (payments/webhooks), Printful API (fulfillment), fal.ai (Flux Pro for portraits), Vercel (deployment). Focus: AI-generated pet portraits on canvas/mugs, viral TikTok video gen, 50%+ margins.
+
+
+
+## Core Guidelines (Always Enforce)
+
+- Next.js 16 only: App Router, Server Components for fetches (e.g., pet products), Client for uploads. Use Cache Components for image galleries. Turbopack for builds.
+
+- TypeScript everywhere: Infer from Supabase schemas, e.g., interface PetOrder { id: string; petName: string; style: string; imageUrl: string; price: number; }.
+
+- Styling: Tailwind classes + Shadcn/UI (e.g., UploadDropzone for pet photos, ProductCard for canvases). Mobile-first, warm pet themes (bg-amber-50 for sections).
+
+- Structure: Folders like app/, components/, lib/, actions/. Hooks: usePetUpload, useFalGenerate. Comments: "// Generates Flux portrait via fal.ai API".
+
+- Performance: Next.js Image for optimized pet portraits (lazy, webp). SEO: Metadata with "AI Pet Portraits | Fur & Fame".
+
+
+
+## Key Integrations (Match Prompts Exactly)
+
+- Auth/Storage: Supabase with @supabase/ssr. Signed uploads for pet photos. Example client:
+
+  import { createBrowserClient } from '@supabase/ssr';
+
+  export const supabase = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+
+- AI Generation: fal.ai Flux Pro via fal-client. Use exact prompt template: "A highly detailed [breed] named [petName] as a [style], perfect fur detail, accurate face from reference, cinematic 4K portrait --ar 3:4 --stylize 250 --v 6 [extraNotes]". Generate 3 variants, show picker.
+
+- Payments/Fulfillment: Stripe for checkout (elements for forms). Webhooks trigger Printful API (create order with portrait file). Products: $59 12x12 Canvas, $89 16x20, $19 Mug, $99 Bundle.
+
+- Video Gen: Remotion for /create-ad-video. 15-sec MP4: 0-3s original photo zoom + text, 3-12s morph to portrait, 12-15s final + CTA. Audio: Embed slowed "Golden Hour".
+
+
+
+## Automation Flow (From Prompts)
+
+- Upload → fal.ai generate → Stripe checkout → webhook → Printful order + Resend email → thank-you upsell.
+
+- NEVER: Raw SQL (use Supabase SDK), unsigned uploads, JS without TypeScript, other AI APIs (fal.ai only).
+
+
+
+## Prompt Handling
+
+- On mega-prompts: Build full site in Agent mode. Include .env.example with keys (FAL_API_KEY, PRINTFUL_API_KEY, STRIPE_SECRET_KEY, SUPABASE_URL).
+
+- Extras: Viral TikTok caption copier, example galleries from provided Drive URLs.
+
+
+
+Deploy-ready for Vercel. Build profitable pet empires!
+
