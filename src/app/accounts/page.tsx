@@ -2196,7 +2196,7 @@ export default function AccountsDashboard() {
                           </p>
                         </div>
                         <div className="bg-amber-50 p-4 rounded-lg">
-                          <p className="text-sm text-gray-600">Today's Usage</p>
+                          <p className="text-sm text-gray-600">Today&apos;s Usage</p>
                           <p className="text-2xl font-bold text-amber-700">
                             ${falUsage.todayUsage.toFixed(2)}
                           </p>
@@ -2229,15 +2229,15 @@ export default function AccountsDashboard() {
                           📋 How to Update Your Balance
                         </h6>
                         <p className="text-sm text-amber-800 mb-3">
-                          <strong>Note:</strong> fal.ai doesn't provide a public API for balance, so manual entry is required.
+                          <strong>Note:</strong> fal.ai doesn&apos;t provide a public API for balance, so manual entry is required.
                         </p>
                         <div className="bg-white p-3 rounded-lg mb-3">
                           <p className="text-sm font-medium text-gray-700 mb-2">Quick Steps:</p>
                           <ol className="text-sm text-gray-600 ml-5 list-decimal space-y-1">
                             <li>Click the button below to open your fal.ai billing page</li>
                             <li>Check your current balance and usage</li>
-                            <li>Enter the values in the "Manual Update" section below</li>
-                            <li>Click "Update Data" to save</li>
+                            <li>Enter the values in the &quot;Manual Update&quot; section below</li>
+                            <li>Click &quot;Update Data&quot; to save</li>
                           </ol>
                         </div>
                         <div className="flex flex-wrap gap-3 items-center">
@@ -2312,7 +2312,7 @@ export default function AccountsDashboard() {
                             </div>
                             <div className="space-y-2">
                               <label className="block text-sm font-semibold text-gray-700">
-                                📅 Today's Usage
+                                📅 Today&apos;s Usage
                                 <span className="text-xs font-normal text-gray-500 block mt-0.5">Current: ${falUsage.todayUsage.toFixed(2)}</span>
                               </label>
                               <div className="relative">

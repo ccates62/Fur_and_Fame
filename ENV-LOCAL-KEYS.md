@@ -19,7 +19,7 @@ FAL_API_KEY=3c29bf78-1853-4485-9bfd-b02abf47b713:f6ab21b3c482877d0cfba50f534045a
 # Stripe Configuration
 # ============================================
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_51SbCHlAEZcDQ4RzypNCEllbfrpsBHYMLDp5KCG9HW0GoguDkmKgXIjPy1tntYJnhhVUXPPetP2vuTmLVtESnQ6Ux00sppSTVvk
-STRIPE_SECRET_KEY=sk_test_51SbCHlAEZcDQ4RzyHfUdZoiqv2xTuvAr4FA8kKz2FVAFnn5fjLyMckkEx8zcB8vjVuC6JBtINSMz6sQ8vQFC5BsH0006OoGZ5b
+# STRIPE_SECRET_KEY - Get from your .env.local file (never commit secrets!)
 
 # ============================================
 # Printful Configuration

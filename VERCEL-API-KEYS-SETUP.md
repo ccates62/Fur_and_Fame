@@ -106,7 +106,7 @@ Click **"Add"** for each environment variable below. Copy the **exact name** and
 
 #### 🔑 Key 7: Stripe Secret Key
 - **Name:** `STRIPE_SECRET_KEY`
-- **Value:** `sk_test_***REDACTED***` (Get from your `.env.local` file - never commit secrets!)
+- **Value:** `sk_test_51SbCHlAEZcDQ4RzyHfUdZoiqv2xTuvAr4FA8kKz2FVAFnn5fjLyMckkEx8zcB8vjVuC6JBtINSMz6sQ8vQFC5BsH0006OoGZ5b`
 - **Environment:** ☑️ Production ☑️ Preview ☑️ Development
 - Click **"Save"**
 
@@ -255,3 +255,4 @@ Your Fur & Fame app is now deployed on Vercel with all API keys configured!
 - [Vercel Dashboard](https://vercel.com/dashboard)
 - [Vercel Docs - Environment Variables](https://vercel.com/docs/concepts/projects/environment-variables)
 - [Vercel Docs - Next.js](https://vercel.com/docs/frameworks/nextjs)
+
