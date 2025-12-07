@@ -202,7 +202,7 @@ export default function AccountsDashboard() {
     {
       name: "Vercel",
       icon: "🚀",
-      status: "pending",
+      status: "complete",
       signUpUrl: "https://vercel.com/signup",
       dashboardUrl: "https://vercel.com/dashboard",
       docsUrl: "https://vercel.com/docs",
