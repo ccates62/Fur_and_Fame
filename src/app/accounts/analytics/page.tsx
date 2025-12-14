@@ -501,12 +501,22 @@ export default function AnalyticsPage() {
                   Monitor costs, usage, and progress across all services
                 </p>
               </div>
-              <Link
-                href="/accounts"
-                className="bg-gray-600 hover:bg-gray-700 text-white font-semibold px-6 py-3 rounded-lg transition shadow-lg"
-              >
-                ← Back to Dashboard
-              </Link>
+              <div className="flex gap-3">
+                <a
+                  href="https://analytics.google.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg transition shadow-lg flex items-center gap-2"
+                >
+                  📊 Open Google Analytics
+                </a>
+                <Link
+                  href="/accounts"
+                  className="bg-gray-600 hover:bg-gray-700 text-white font-semibold px-6 py-3 rounded-lg transition shadow-lg"
+                >
+                  ← Back to Dashboard
+                </Link>
+              </div>
             </div>
 
             {/* Period Selector */}
