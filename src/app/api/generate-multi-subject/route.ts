@@ -127,27 +127,23 @@ export async function POST(request: NextRequest) {
     let errorMessage = error.message || "Unknown error occurred";
     let statusCode = 500;
     const testMode = isTestMode();
+    const hasApiKey = !!process.env.FAL_API_KEY;
     
-    // If API key error and test mode is active, don't return 401 - just note it's in test mode
-    if ((errorMessage.includes("API key") || errorMessage.includes("FAL_API_KEY")) && testMode) {
-      console.log("⚠️ API key missing but test mode should handle this - this error shouldn't occur");
-      // The generatePortraitVariants should have used test mode, so this is unexpected
-      // Return a helpful message instead of 401
-      // Note: session_id is not available in catch block, so we omit it
+    // If API key is missing, always use test mode (even if error occurred)
+    // This ensures users can still test the flow without API key
+    if (!hasApiKey || (errorMessage.includes("API key") || errorMessage.includes("FAL_API_KEY"))) {
+      console.log("⚠️ FAL_API_KEY not configured - returning test mode response");
       statusCode = 200;
       return NextResponse.json({
         success: true,
         variants: {},
         testMode: true,
-        message: "Test mode is active but an error occurred. Please check server logs.",
-        warning: "FAL_API_KEY is not configured. Portraits will use placeholder images in test mode.",
+        message: "Test mode is active. Portraits will use placeholder images.",
+        warning: "FAL_API_KEY is not configured. To use real AI generation, set FAL_API_KEY in your environment variables.",
       });
     }
     
-    if (errorMessage.includes("API key") || errorMessage.includes("FAL_API_KEY")) {
-      statusCode = 401;
-      errorMessage = "API key not configured. Please set FAL_API_KEY in your environment variables.";
-    } else if (errorMessage.includes("balance") || errorMessage.includes("credit") || errorMessage.includes("insufficient")) {
+    if (errorMessage.includes("balance") || errorMessage.includes("credit") || errorMessage.includes("insufficient")) {
       statusCode = 402;
       errorMessage = "Insufficient account balance. Please add funds to your fal.ai account or enable TEST_MODE for free testing.";
     }
