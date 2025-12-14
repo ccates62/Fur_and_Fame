@@ -52,14 +52,22 @@ export async function POST(request: NextRequest) {
         }
       );
     } else {
-      // Single product
+      // Single product - include portrait image in Stripe product
+      const productDescription = product_id === "blanket" 
+        ? "Cozy fleece throw blanket with your pet's AI-generated portrait"
+        : product_id === "t-shirt"
+        ? "Soft cotton t-shirt featuring your pet's AI-generated portrait"
+        : product_id === "poster"
+        ? "High-quality poster print of your pet's AI-generated portrait"
+        : `Your pet's AI-generated portrait printed on ${product_name.toLowerCase()}`;
+      
       lineItems.push({
         price_data: {
           currency: "usd",
           product_data: {
             name: product_name,
-            description: `Your pet's AI-generated portrait printed on ${product_name.toLowerCase()}`,
-            images: variant_url ? [variant_url] : undefined,
+            description: productDescription,
+            images: variant_url ? [variant_url] : undefined, // Show portrait in Stripe checkout
           },
           unit_amount: Math.round(price * 100), // Convert to cents
         },

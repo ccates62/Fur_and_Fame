@@ -38,6 +38,27 @@ const products: Product[] = [
     icon: "☕",
   },
   {
+    id: "blanket",
+    name: "Throw Blanket",
+    description: "Cozy fleece blanket with your pet's portrait, perfect for snuggling",
+    price: 49,
+    icon: "🛏️",
+  },
+  {
+    id: "t-shirt",
+    name: "T-Shirt",
+    description: "Soft cotton t-shirt featuring your pet's portrait",
+    price: 29,
+    icon: "👕",
+  },
+  {
+    id: "poster",
+    name: "Poster Print",
+    description: "High-quality poster print, great for wall decoration",
+    price: 24,
+    icon: "📄",
+  },
+  {
     id: "bundle",
     name: "Bundle",
     description: "Best value! Get both 12x12 Canvas and Mug together",
@@ -168,40 +189,63 @@ export default function CheckoutPage() {
 
           {/* Product Selection */}
           <div className="lg:col-span-2">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
               {products.map((product) => {
                 const isSelected = selectedProduct?.id === product.id;
                 return (
                   <div
                     key={product.id}
                     onClick={() => handleProductSelect(product)}
-                    className={`relative bg-white rounded-lg shadow-md p-6 cursor-pointer transition-all duration-300 ${
+                    className={`relative bg-white rounded-lg shadow-md overflow-hidden cursor-pointer transition-all duration-300 ${
                       isSelected
                         ? "ring-4 ring-amber-500 scale-105 shadow-xl"
                         : "hover:scale-102 hover:shadow-lg"
                     }`}
                   >
                     {product.popular && (
-                      <div className="absolute top-4 right-4 bg-amber-500 text-white text-xs font-bold px-3 py-1 rounded-full">
+                      <div className="absolute top-2 right-2 bg-amber-500 text-white text-xs font-bold px-2 py-1 rounded-full z-10">
                         POPULAR
                       </div>
                     )}
-                    <div className="text-5xl mb-4 text-center">{product.icon}</div>
-                    <h3 className="text-2xl font-bold text-gray-900 mb-2 text-center">
-                      {product.name}
-                    </h3>
-                    <p className="text-gray-600 text-center mb-4 min-h-[3rem]">
-                      {product.description}
-                    </p>
-                    <div className="text-center">
-                      <p className="text-3xl font-bold text-amber-600">
-                        ${product.price}
-                      </p>
+                    
+                    {/* Product Preview with Portrait */}
+                    <div className="relative aspect-square bg-gradient-to-br from-gray-100 to-gray-200">
+                      {selectedVariant && (
+                        <Image
+                          src={selectedVariant.url}
+                          alt={`${product.name} with portrait`}
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                        />
+                      )}
+                      {/* Product overlay/mockup effect */}
+                      <div className="absolute inset-0 bg-black/10" />
+                      <div className="absolute bottom-2 left-2 right-2 bg-white/90 backdrop-blur-sm rounded px-2 py-1">
+                        <p className="text-xs font-semibold text-gray-900 text-center">
+                          {product.icon} {product.name}
+                        </p>
+                      </div>
                     </div>
+                    
+                    <div className="p-4">
+                      <h3 className="text-xl font-bold text-gray-900 mb-1 text-center">
+                        {product.name}
+                      </h3>
+                      <p className="text-sm text-gray-600 text-center mb-3 min-h-[2.5rem]">
+                        {product.description}
+                      </p>
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-amber-600">
+                          ${product.price}
+                        </p>
+                      </div>
+                    </div>
+                    
                     {isSelected && (
-                      <div className="absolute top-4 left-4 bg-amber-500 text-white rounded-full p-2">
+                      <div className="absolute top-2 left-2 bg-amber-500 text-white rounded-full p-2 z-10">
                         <svg
-                          className="w-6 h-6"
+                          className="w-5 h-5"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
