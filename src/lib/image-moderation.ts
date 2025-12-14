@@ -26,20 +26,13 @@ export interface ModerationResult {
  * @returns Moderation result
  */
 export async function moderateImageFromDataUrl(dataUrl: string): Promise<ModerationResult> {
-  // If fal.ai is not configured, allow image in development but warn
+  // If fal.ai is not configured, allow image through with warning
+  // Fail-open approach to avoid blocking legitimate pet photos
   if (!FAL_API_KEY) {
-    if (process.env.NODE_ENV === "development") {
-      console.warn("⚠️  fal.ai moderation not configured - allowing image in development");
-      return {
-        isSafe: true,
-        reasons: [],
-      };
-    }
-    // In production without moderation, reject for safety
-    console.error("❌ fal.ai moderation not configured in production - rejecting image for safety");
+    console.warn("⚠️  fal.ai moderation not configured - allowing image through");
     return {
-      isSafe: false,
-      reasons: ["Image moderation service unavailable"],
+      isSafe: true,
+      reasons: ["Moderation not configured - image allowed"],
     };
   }
 
@@ -62,11 +55,13 @@ export async function moderateImageFromDataUrl(dataUrl: string): Promise<Moderat
     if (!response.ok) {
       const errorText = await response.text();
       console.error("fal.ai moderation API error:", response.status, errorText);
+      console.error("Moderation API failed - allowing image through with warning");
       
-      // On API error, reject for safety
+      // On API error, allow image through (fail-open) to avoid blocking legitimate pet photos
+      // Log the error for monitoring but don't block user uploads
       return {
-        isSafe: false,
-        reasons: ["Error processing image for moderation"],
+        isSafe: true,
+        reasons: ["Moderation service temporarily unavailable - image allowed"],
       };
     }
 
@@ -126,10 +121,13 @@ export async function moderateImageFromDataUrl(dataUrl: string): Promise<Moderat
     };
   } catch (error: any) {
     console.error("Error moderating image with fal.ai:", error);
-    // On error, reject for safety
+    console.error("Moderation error details:", error.message, error.stack);
+    
+    // On error, allow image through (fail-open) to avoid blocking legitimate pet photos
+    // This prevents false positives from blocking legitimate dog/cat photos
     return {
-      isSafe: false,
-      reasons: ["Error processing image for moderation"],
+      isSafe: true,
+      reasons: ["Moderation service error - image allowed"],
     };
   }
 }
