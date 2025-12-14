@@ -74,6 +74,8 @@ export default function CheckoutPage() {
   const [selectedVariant, setSelectedVariant] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mockupUrls, setMockupUrls] = useState<Record<string, string>>({});
+  const [loadingMockups, setLoadingMockups] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     // Load selected variant from sessionStorage
@@ -93,6 +95,82 @@ export default function CheckoutPage() {
       }
     }
   }, [router]);
+
+  // Fetch Printful mockups for all products when variant is loaded
+  useEffect(() => {
+    if (!selectedVariant?.url) return;
+
+    const fetchMockups = async () => {
+      const newMockupUrls: Record<string, string> = {};
+      const newLoadingMockups: Record<string, boolean> = {};
+
+      // Fetch mockups for each product (except bundle, which we'll handle separately)
+      for (const product of products) {
+        if (product.id === "bundle") continue; // Bundle will show canvas + mug separately
+
+        newLoadingMockups[product.id] = true;
+        setLoadingMockups((prev) => ({ ...prev, [product.id]: true }));
+
+        try {
+          const response = await fetch("/api/printful-mockup", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              product_id: product.id,
+              image_url: selectedVariant.url,
+            }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.mockup_url) {
+              newMockupUrls[product.id] = data.mockup_url;
+            } else if (data.task_key) {
+              // Poll for mockup if task-based
+              const pollMockup = async () => {
+                let attempts = 0;
+                const maxAttempts = 10;
+                while (attempts < maxAttempts) {
+                  await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait 2 seconds
+                  const statusResponse = await fetch(`/api/printful-mockup/status?task_key=${data.task_key}`);
+                  if (statusResponse.ok) {
+                    const statusData = await statusResponse.json();
+                    if (statusData.mockup_url) {
+                      newMockupUrls[product.id] = statusData.mockup_url;
+                      setMockupUrls((prev) => ({ ...prev, [product.id]: statusData.mockup_url }));
+                      setLoadingMockups((prev) => ({ ...prev, [product.id]: false }));
+                      return;
+                    }
+                  }
+                  attempts++;
+                }
+                // Fallback to original image if polling fails
+                newMockupUrls[product.id] = selectedVariant.url;
+                setLoadingMockups((prev) => ({ ...prev, [product.id]: false }));
+              };
+              pollMockup();
+            } else {
+              // Fallback to original image
+              newMockupUrls[product.id] = selectedVariant.url;
+            }
+          } else {
+            // Fallback to original image on error
+            newMockupUrls[product.id] = selectedVariant.url;
+          }
+        } catch (err) {
+          console.error(`Error fetching mockup for ${product.id}:`, err);
+          // Fallback to original image
+          newMockupUrls[product.id] = selectedVariant.url;
+        } finally {
+          setLoadingMockups((prev) => ({ ...prev, [product.id]: false }));
+        }
+      }
+
+      setMockupUrls((prev) => ({ ...prev, ...newMockupUrls }));
+    };
+
+    fetchMockups();
+  }, [selectedVariant]);
 
   const handleProductSelect = (product: Product) => {
     setSelectedProduct(product);
@@ -208,130 +286,28 @@ export default function CheckoutPage() {
                       </div>
                     )}
                     
-                    {/* Product Preview with Portrait Mockup */}
+                    {/* Product Preview with Printful Mockup */}
                     <div className="relative aspect-square bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
-                      {/* Product-specific mockup background */}
-                      {product.id === "canvas-12x12" || product.id === "canvas-16x20" ? (
-                        // Canvas mockup - show canvas frame with portrait
-                        <>
-                          <div className="absolute inset-4 bg-white rounded shadow-lg border-4 border-amber-800/20">
-                            {selectedVariant && (
-                              <Image
-                                src={selectedVariant.url}
-                                alt={`Canvas with ${product.name}`}
-                                fill
-                                className="object-cover rounded"
-                                sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                              />
-                            )}
-                          </div>
-                          {/* Canvas frame effect */}
-                          <div className="absolute inset-0 pointer-events-none">
-                            <div className="absolute inset-2 border-2 border-amber-700/30 rounded" />
-                          </div>
-                        </>
-                      ) : product.id === "mug" ? (
-                        // Mug mockup - show mug shape with portrait
-                        <>
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="relative w-3/4 h-3/4">
-                              {/* Mug shape */}
-                              <div className="absolute inset-0 bg-gradient-to-b from-white to-gray-200 rounded-t-full rounded-b-3xl shadow-xl border-4 border-gray-300">
-                                <div className="absolute inset-2 rounded-t-full rounded-b-3xl overflow-hidden">
-                                  {selectedVariant && (
-                                    <Image
-                                      src={selectedVariant.url}
-                                      alt="Mug with portrait"
-                                      fill
-                                      className="object-cover rounded-t-full"
-                                      sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                                    />
-                                  )}
-                                </div>
-                                {/* Mug handle */}
-                                <div className="absolute -right-4 top-1/4 w-8 h-16 bg-gradient-to-r from-gray-300 to-gray-400 rounded-r-full" />
-                              </div>
-                            </div>
-                          </div>
-                        </>
-                      ) : product.id === "blanket" ? (
-                        // Blanket mockup - show folded blanket with portrait
-                        <>
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="relative w-full h-full">
-                              {/* Blanket shape - folded corner effect */}
-                              <div className="absolute inset-2 bg-gradient-to-br from-amber-50 to-amber-100 rounded-lg shadow-xl border-2 border-amber-200">
-                                <div className="absolute inset-2 rounded-lg overflow-hidden">
-                                  {selectedVariant && (
-                                    <Image
-                                      src={selectedVariant.url}
-                                      alt="Blanket with portrait"
-                                      fill
-                                      className="object-cover"
-                                      sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                                    />
-                                  )}
-                                </div>
-                              </div>
-                              {/* Folded corner effect */}
-                              <div className="absolute top-0 right-0 w-1/3 h-1/3 bg-amber-200/50 rounded-bl-full" />
-                            </div>
-                          </div>
-                        </>
-                      ) : product.id === "t-shirt" ? (
-                        // T-shirt mockup - show t-shirt shape with portrait
-                        <>
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="relative w-4/5 h-4/5">
-                              {/* T-shirt shape */}
-                              <div className="absolute inset-0">
-                                {/* Shirt body */}
-                                <div className="absolute top-0 left-1/4 right-1/4 h-3/5 bg-white rounded-t-3xl shadow-xl border-2 border-gray-200">
-                                  <div className="absolute inset-2 rounded-t-3xl overflow-hidden">
-                                    {selectedVariant && (
-                                      <Image
-                                        src={selectedVariant.url}
-                                        alt="T-shirt with portrait"
-                                        fill
-                                        className="object-cover rounded-t-3xl"
-                                        sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                                      />
-                                    )}
-                                  </div>
-                                </div>
-                                {/* Sleeves */}
-                                <div className="absolute top-0 left-0 w-1/4 h-2/5 bg-white rounded-tl-full rounded-br-2xl shadow-lg border-2 border-gray-200" />
-                                <div className="absolute top-0 right-0 w-1/4 h-2/5 bg-white rounded-tr-full rounded-bl-2xl shadow-lg border-2 border-gray-200" />
-                              </div>
-                            </div>
-                          </div>
-                        </>
-                      ) : product.id === "poster" ? (
-                        // Poster mockup - show poster with portrait
-                        <>
-                          <div className="absolute inset-4 bg-white rounded shadow-2xl border-2 border-gray-300">
-                            {selectedVariant && (
-                              <Image
-                                src={selectedVariant.url}
-                                alt="Poster with portrait"
-                                fill
-                                className="object-cover rounded"
-                                sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                              />
-                            )}
-                          </div>
-                          {/* Poster pins/tape effect */}
-                          <div className="absolute top-2 left-1/2 -translate-x-1/2 w-3 h-3 bg-gray-400 rounded-full" />
-                          <div className="absolute top-2 left-1/4 w-2 h-2 bg-amber-300/50 rotate-45" />
-                          <div className="absolute top-2 right-1/4 w-2 h-2 bg-amber-300/50 rotate-45" />
-                        </>
+                      {loadingMockups[product.id] ? (
+                        // Loading state while fetching Printful mockup
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600"></div>
+                        </div>
                       ) : product.id === "bundle" ? (
-                        // Bundle mockup - show canvas and mug together
-                        <>
-                          <div className="absolute inset-0 flex items-center justify-center gap-2 p-2">
-                            {/* Canvas */}
-                            <div className="relative w-2/5 h-4/5">
-                              <div className="absolute inset-0 bg-white rounded shadow-lg border-2 border-amber-800/20">
+                        // Bundle: Show canvas and mug mockups side-by-side
+                        <div className="absolute inset-0 flex items-center justify-center gap-2 p-2">
+                          {/* Canvas mockup */}
+                          <div className="relative w-2/5 h-4/5">
+                            {mockupUrls["canvas-12x12"] ? (
+                              <Image
+                                src={mockupUrls["canvas-12x12"]}
+                                alt="Canvas mockup"
+                                fill
+                                className="object-contain"
+                                sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                              />
+                            ) : (
+                              <div className="absolute inset-0 bg-white rounded shadow-lg border-2 border-amber-800/20 flex items-center justify-center">
                                 {selectedVariant && (
                                   <Image
                                     src={selectedVariant.url}
@@ -342,10 +318,20 @@ export default function CheckoutPage() {
                                   />
                                 )}
                               </div>
-                            </div>
-                            {/* Mug */}
-                            <div className="relative w-2/5 h-4/5">
-                              <div className="absolute inset-0 bg-gradient-to-b from-white to-gray-200 rounded-t-full rounded-b-2xl shadow-lg border-2 border-gray-300">
+                            )}
+                          </div>
+                          {/* Mug mockup */}
+                          <div className="relative w-2/5 h-4/5">
+                            {mockupUrls["mug"] ? (
+                              <Image
+                                src={mockupUrls["mug"]}
+                                alt="Mug mockup"
+                                fill
+                                className="object-contain"
+                                sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                              />
+                            ) : (
+                              <div className="absolute inset-0 bg-gradient-to-b from-white to-gray-200 rounded-t-full rounded-b-2xl shadow-lg border-2 border-gray-300 flex items-center justify-center">
                                 <div className="absolute inset-1 rounded-t-full rounded-b-2xl overflow-hidden">
                                   {selectedVariant && (
                                     <Image
@@ -357,23 +343,29 @@ export default function CheckoutPage() {
                                     />
                                   )}
                                 </div>
-                                <div className="absolute -right-2 top-1/4 w-4 h-12 bg-gradient-to-r from-gray-300 to-gray-400 rounded-r-full" />
                               </div>
-                            </div>
+                            )}
                           </div>
-                        </>
-                      ) : (
-                        // Fallback - just show portrait
-                        selectedVariant && (
-                          <Image
-                            src={selectedVariant.url}
-                            alt={`${product.name} with portrait`}
-                            fill
-                            className="object-cover"
-                            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                          />
-                        )
-                      )}
+                        </div>
+                      ) : mockupUrls[product.id] ? (
+                        // Show Printful mockup if available
+                        <Image
+                          src={mockupUrls[product.id]}
+                          alt={`${product.name} mockup`}
+                          fill
+                          className="object-contain"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                        />
+                      ) : selectedVariant ? (
+                        // Fallback: Show original portrait if mockup not available
+                        <Image
+                          src={selectedVariant.url}
+                          alt={`${product.name} with portrait`}
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                        />
+                      ) : null}
                       
                       {/* Product label overlay */}
                       <div className="absolute bottom-2 left-2 right-2 bg-white/95 backdrop-blur-sm rounded px-2 py-1 shadow-md">
