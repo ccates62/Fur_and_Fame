@@ -5,6 +5,7 @@ import { getSupabaseClient } from "@/lib/supabase-client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
+
 export default function AccountSettingsPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);

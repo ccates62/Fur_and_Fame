@@ -2,21 +2,8 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  // Use modern key formats
-  const secretKey = 
-    process.env.SUPABASE_SECRET_KEY || 
-    (process.env.SUPABASE_SERVICE_ROLE_KEY?.startsWith("sb_secret_") 
-      ? process.env.SUPABASE_SERVICE_ROLE_KEY 
-      : null) || undefined;
-  
-  const publishableKey = 
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 
-    (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.startsWith("sb_publishable_") 
-      ? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY 
-      : null) || undefined;
-  
-  const serviceRoleKeyFinal = secretKey;
-  const anonKeyFinal = publishableKey;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl) {
     return NextResponse.json({
@@ -28,15 +15,15 @@ export async function GET() {
     }, { status: 200 });
   }
 
-  // Use service role key if available (has more permissions), otherwise use publishable key
-  const apiKey = serviceRoleKeyFinal || anonKeyFinal;
+  // Use service role key if available (has more permissions), otherwise use anon key
+  const apiKey = serviceRoleKey || anonKey;
   
   if (!apiKey) {
     return NextResponse.json({
       database: 0,
       storage: 0,
       bandwidth: 0,
-      message: 'Supabase API keys not configured. Please add SUPABASE_SECRET_KEY (sb_secret_...) and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY (sb_publishable_...) to .env.local',
+      message: 'Supabase API keys not configured. Please add SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY to .env.local',
       manualEntry: true
     }, { status: 200 });
   }
@@ -48,14 +35,14 @@ export async function GET() {
     let storageMB = 0;
 
     // Method 1: Try to get database size via REST API (if we have service role key)
-    if (serviceRoleKeyFinal) {
+    if (serviceRoleKey) {
       try {
         // Query database size using PostgreSQL function via REST API
         const dbSizeResponse = await fetch(`${supabaseUrl}/rest/v1/rpc/pg_database_size`, {
           method: 'POST',
           headers: {
-            'apikey': serviceRoleKeyFinal,
-            'Authorization': `Bearer ${serviceRoleKeyFinal}`,
+            'apikey': serviceRoleKey,
+            'Authorization': `Bearer ${serviceRoleKey}`,
             'Content-Type': 'application/json',
             'Prefer': 'return=representation'
           },
@@ -88,8 +75,8 @@ export async function GET() {
         const storageResponse = await fetch(`${supabaseUrl}/storage/v1/bucket`, {
           method: 'GET',
           headers: {
-            'apikey': serviceRoleKeyFinal,
-            'Authorization': `Bearer ${serviceRoleKeyFinal}`,
+            'apikey': serviceRoleKey,
+            'Authorization': `Bearer ${serviceRoleKey}`,
             'Content-Type': 'application/json'
           }
         });
@@ -103,8 +90,8 @@ export async function GET() {
                 const filesResponse = await fetch(`${supabaseUrl}/storage/v1/bucket/${bucket.name}/objects`, {
                   method: 'GET',
                   headers: {
-                    'apikey': serviceRoleKeyFinal,
-                    'Authorization': `Bearer ${serviceRoleKeyFinal}`,
+                    'apikey': serviceRoleKey,
+                    'Authorization': `Bearer ${serviceRoleKey}`,
                     'Content-Type': 'application/json'
                   }
                 });

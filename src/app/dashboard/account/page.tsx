@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getSupabaseClient } from "@/lib/supabase-client";
 import Link from "next/link";
+import Stripe from "stripe";
+
 
 interface Order {
   id: string;

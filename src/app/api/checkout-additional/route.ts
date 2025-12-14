@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
-import { getBaseUrl } from "@/lib/url-utils";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-11-17.clover",
@@ -21,9 +20,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get origin from request header, or use base URL utility
-    const baseUrl = getBaseUrl();
-    const origin = request.headers.get("origin") || baseUrl;
+    const origin = request.headers.get("origin") || "http://localhost:3000";
 
     // Create Stripe checkout session for $0.50
     const checkoutSession = await stripe.checkout.sessions.create({

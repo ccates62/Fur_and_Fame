@@ -4,13 +4,7 @@ import Stripe from "stripe";
 import { cookies } from "next/headers";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-// Use modern publishable key format
-const publishableKey = 
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 
-  (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.startsWith("sb_publishable_") 
-    ? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY 
-    : null) || "";
-const supabaseAnonKey = publishableKey;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY!;
 
 const stripe = new Stripe(stripeSecretKey, {
@@ -41,7 +35,7 @@ export async function GET(request: NextRequest) {
         },
       },
     });
-    
+
     const {
       data: { user },
       error: authError,

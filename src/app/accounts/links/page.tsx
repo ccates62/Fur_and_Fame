@@ -2,16 +2,6 @@
 
 import Link from "next/link";
 
-// Get base URL for client-side use
-function getBaseUrl(): string {
-  if (typeof window !== "undefined") {
-    // Client-side: use current origin or env variable
-    return process.env.NEXT_PUBLIC_BASE_URL || window.location.origin;
-  }
-  // Server-side fallback
-  return process.env.NEXT_PUBLIC_BASE_URL || "https://www.furandfame.com";
-}
-
 interface BusinessLink {
   name: string;
   url: string;
@@ -24,7 +14,7 @@ const businessLinks: BusinessLink[] = [
   // CRITICAL - Daily/Weekly Use
   {
     name: "Fur & Fame Website",
-    url: getBaseUrl(),
+    url: "https://furandfame.vercel.app",
     description: "Your live production website - check orders, test features",
     category: "critical",
     icon: "🌐",
@@ -121,13 +111,6 @@ const businessLinks: BusinessLink[] = [
     description: "Business bank account - view balance, transactions, statements",
     category: "important",
     icon: "🏦",
-  },
-  {
-    name: "Wave Accounting Dashboard",
-    url: "https://next.waveapps.com/f1e34b2d-eb8b-44a8-a8fa-1e110990d88b/dashboard",
-    description: "Free accounting software - track income, expenses, invoices, and financial reports",
-    category: "important",
-    icon: "📊",
   },
 
   // REFERENCE - Occasional Use

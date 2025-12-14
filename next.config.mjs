@@ -28,8 +28,9 @@ const nextConfig = {
       },
     ],
   },
-  // Note: SWC minification is enabled by default in Next.js 16+
-  // No need to configure it manually
+  // SWC minification disabled due to parser compatibility issues
+  // Re-enable when parser issues are resolved for better production performance
+  swcMinify: false,
 };
 
 export default nextConfig;

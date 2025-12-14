@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect } from "react";
 import { getSupabaseClient } from "@/lib/supabase-client";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
-function LoginForm() {
+export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [formData, setFormData] = useState({
@@ -39,60 +39,36 @@ function LoginForm() {
     try {
       const supabase = getSupabaseClient();
 
-      // Enhanced error logging for debugging
-      console.log("🔐 Attempting sign in with:", {
-        email: formData.email,
-        keyType: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.startsWith("sb_publishable_") ? "publishable" : "unknown"
-      });
-
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email: formData.email,
         password: formData.password,
       });
 
       if (signInError) {
-        console.error("❌ Sign in error:", {
-          message: signInError.message,
-          status: signInError.status,
-          name: signInError.name
-        });
-        setError(signInError.message || "Authentication failed. Please check your credentials.");
+        setError(signInError.message);
         setLoading(false);
         return;
       }
 
       if (data.user) {
-        // ABSOLUTE RULE: Business accounts ONLY on localhost - NO EXCEPTIONS
-        const isLocalhost = typeof window !== "undefined" && (
-          window.location.hostname === "localhost" || 
-          window.location.hostname === "127.0.0.1"
-        );
-        
-        // NEVER redirect to /accounts on production - ALWAYS go to /dashboard
-        if (!isLocalhost) {
-          console.log("👤 Production site - redirecting to customer dashboard");
-          router.push("/dashboard");
-          return;
-        }
-        
-        // Only check owner email on localhost
-        const requiredOwnerEmail = "ccates.timberlinecollective@gmail.com".toLowerCase();
+        // Check if user is owner and redirect accordingly
+        const ownerEmail = (process.env.NEXT_PUBLIC_OWNER_EMAIL || "").trim().toLowerCase();
         const userEmail = (data.user.email || "").trim().toLowerCase();
-        const isOwner = userEmail === requiredOwnerEmail;
+        const isOwner = !ownerEmail || userEmail === ownerEmail;
         
-        console.log("🔍 Login - Owner Check (localhost only):", {
-          requiredOwnerEmail,
+        console.log("🔍 Login - Owner Check:", {
+          ownerEmailFromEnv: process.env.NEXT_PUBLIC_OWNER_EMAIL,
+          ownerEmailNormalized: ownerEmail,
           userEmailRaw: data.user.email,
           userEmailNormalized: userEmail,
           isOwner,
         });
         
-        // On localhost, redirect owner to /accounts, others to /dashboard
         if (isOwner) {
-          console.log("✅ Redirecting owner to business dashboard (localhost only)");
+          console.log("✅ Redirecting owner to business dashboard");
           router.push("/accounts");
         } else {
-          console.log("👤 Redirecting to customer dashboard");
+          console.log("👤 Redirecting customer to dashboard");
           router.push("/dashboard");
         }
       }
@@ -186,20 +162,5 @@ function LoginForm() {
         </div>
       </div>
     </div>
-  );
-}
-
-export default function LoginPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    }>
-      <LoginForm />
-    </Suspense>
   );
 }

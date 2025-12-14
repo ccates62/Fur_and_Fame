@@ -4,13 +4,7 @@
  */
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-// Use modern publishable key format (sb_publishable_...)
-const publishableKey = 
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 
-  (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.startsWith("sb_publishable_") 
-    ? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY 
-    : null);
-const SUPABASE_ANON_KEY = publishableKey || undefined;
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 export interface UploadResult {
   url: string;

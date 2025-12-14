@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { validateUserContent } from "@/lib/content-moderation";
 
+
 export default function SignUpPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({

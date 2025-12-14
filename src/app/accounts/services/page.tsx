@@ -531,21 +531,6 @@ export default function ServicesPage() {
                           Docs
                         </a>
                       </div>
-                      {/* Auto-Push Script Link for Vercel */}
-                      {service.name === "Vercel" && (
-                        <div className="mb-4 pt-3 border-t border-gray-200">
-                          <a
-                            href="/auto-push.bat"
-                            download="auto-push.bat"
-                            className="w-full bg-green-600 hover:bg-green-700 text-white text-center px-3 py-2 rounded-lg text-sm font-semibold transition block mb-2"
-                          >
-                            📤 Download Auto-Push Script
-                          </a>
-                          <p className="text-xs text-gray-500 text-center">
-                            Double-click to push code to GitHub & trigger Vercel deployment
-                          </p>
-                        </div>
-                      )}
 
                       {/* Expand Details */}
                       <button

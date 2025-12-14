@@ -21,10 +21,7 @@ export const metadata: Metadata = {
     description:
       "Royal portraits, superhero poses, Disney magic – instantly. Transform your pet with AI-powered portraits.",
     type: "website",
-    url: process.env.NEXT_PUBLIC_BASE_URL || "https://www.furandfame.com",
-    siteName: "Fur & Fame",
   },
-  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || "https://www.furandfame.com"),
 };
 
 export default function RootLayout({

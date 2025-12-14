@@ -14,9 +14,9 @@ export default function Navbar() {
   useEffect(() => {
     checkUser();
     
-    // Listen for auth changes
+    // Listen for auth changes using shared client
     const supabase = getSupabaseClient();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         setUser(session.user);
       } else {

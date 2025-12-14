@@ -6,18 +6,8 @@
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-// Use modern secret key format (sb_secret_...)
-const secretKey = 
-  process.env.SUPABASE_SECRET_KEY || 
-  (process.env.SUPABASE_SERVICE_ROLE_KEY?.startsWith("sb_secret_") 
-    ? process.env.SUPABASE_SERVICE_ROLE_KEY 
-    : null);
-
-if (!secretKey) {
-  throw new Error("Supabase secret key is missing. Please add SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY (with sb_secret_ prefix) to .env.local");
-}
-
-const supabase = createClient(supabaseUrl, secretKey);
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!; // Use service role for server-side
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 export interface GenerationSession {
   id: string;

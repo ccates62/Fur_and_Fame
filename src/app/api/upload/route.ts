@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateImageContent, sanitizeFilename } from "@/lib/content-moderation";
-import { moderateImageFromDataUrl } from "@/lib/fal-image-moderation";
+import { moderateImageFromDataUrl } from "@/lib/image-moderation";
 
 /**
  * API route to handle pet photo uploads
@@ -65,7 +65,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Convert to base64 data URL for moderation and processing
-    // In production, upload to Supabase storage
     // Note: HEIC files will need conversion on the client side or server-side library
     const arrayBuffer = await file.arrayBuffer();
     const base64 = Buffer.from(arrayBuffer).toString("base64");
@@ -77,37 +76,18 @@ export async function POST(request: NextRequest) {
     }
     
     const dataUrl = `data:${mimeType};base64,${base64}`;
-    
-    // Log file info for debugging
-    console.log("📤 Uploading file:", {
-      name: file.name,
-      type: file.type,
-      size: file.size,
-      mimeType: mimeType,
-      dataUrlLength: dataUrl.length,
-    });
 
-    // Moderate image using fal.ai NSFW detection
-    console.log("🛡️ Starting image moderation check...");
+    // Moderate image content using fal.ai NSFW detection
     const moderationResult = await moderateImageFromDataUrl(dataUrl);
-    
-    // Only reject if NSFW content is actually detected (not if API fails)
-    if (!moderationResult.isSafe && !moderationResult.error) {
-      console.warn("❌ Image rejected by moderation:", moderationResult.reason);
+    if (!moderationResult.isSafe) {
       return NextResponse.json(
         {
           error: "Image rejected",
-          message: moderationResult.reason || "Image contains inappropriate content",
+          message: `Image contains inappropriate content: ${moderationResult.reasons.join(", ")}`,
+          reasons: moderationResult.reasons,
         },
         { status: 400 }
       );
-    }
-    
-    // If moderation was skipped due to API error, log it but allow image
-    if (moderationResult.error) {
-      console.warn("⚠️ Moderation check had issues but allowing image:", moderationResult.reason);
-    } else {
-      console.log("✅ Image moderation check passed:", moderationResult.reason || "Image is safe");
     }
 
     return NextResponse.json({

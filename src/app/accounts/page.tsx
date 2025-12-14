@@ -2,44 +2,15 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { getSupabaseClient } from "@/lib/supabase-client";
+import { createClient } from "@supabase/supabase-js";
 import Link from "next/link";
 import Script from "next/script";
 import ProgressTracker from "@/components/ProgressTracker";
 import BreedNotification from "@/components/BreedNotification";
 
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const OWNER_EMAIL = process.env.NEXT_PUBLIC_OWNER_EMAIL || "";
-
-// Component to display business info fields from API
-function BusinessInfoField({ field, label, envKey }: { field: string; label: string; envKey: string }) {
-  const [value, setValue] = useState<string>("Loading...");
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch("/api/business-info")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success && data.data) {
-          setValue(data.data[field] || "Not configured");
-        } else {
-          setValue("Not configured");
-        }
-      })
-      .catch(() => {
-        setValue("Not configured");
-      })
-      .finally(() => setLoading(false));
-  }, [field]);
-
-  return (
-    <>
-      <code className="text-sm font-mono text-gray-900">
-        {loading ? "Loading..." : value || "Not configured"}
-      </code>
-      <p className="text-xs text-gray-500 mt-1">Store in .env.local as {envKey}</p>
-    </>
-  );
-}
 
 interface Service {
   name: string;
@@ -104,37 +75,6 @@ export default function AccountsDashboard() {
   const [loading, setLoading] = useState(true);
   const [isOwner, setIsOwner] = useState(false);
   const [accessError, setAccessError] = useState<string | null>(null);
-  
-  // ABSOLUTE BLOCK: Business accounts ONLY on localhost - NO EXCEPTIONS
-  if (typeof window !== "undefined") {
-    const hostname = window.location.hostname.toLowerCase();
-    
-    // ONLY allow localhost - block EVERYTHING else (including production)
-    const isLocalhost = 
-      hostname === "localhost" || 
-      hostname === "127.0.0.1";
-    
-    // If NOT localhost, BLOCK IMMEDIATELY - redirect to dashboard
-    if (!isLocalhost) {
-      console.error("🚨 CLIENT BLOCKED: Business accounts accessed from production:", hostname);
-      window.location.replace("/dashboard");
-      return (
-        <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50 flex items-center justify-center">
-          <div className="max-w-md mx-auto bg-white rounded-lg shadow-lg p-6">
-            <div className="text-center">
-              <div className="text-4xl mb-4">🔒</div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">Access Denied</h2>
-              <p className="text-gray-600 mb-4">
-                Business accounts are ONLY available on localhost for security.
-              </p>
-              <p className="text-sm text-gray-500">This page is NOT available on furandfame.com</p>
-              <p className="text-xs text-gray-400 mt-2">Redirecting...</p>
-            </div>
-          </div>
-        </div>
-      );
-    }
-  }
 
   // Sales tracking interface
   interface Sale {
@@ -633,26 +573,6 @@ export default function AccountsDashboard() {
     }
   }, [supabaseUsage]);
 
-  // CRITICAL: Immediate production domain block - runs before checkAccess
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const hostname = window.location.hostname.toLowerCase();
-      const isLocalhost = 
-        hostname === "localhost" || 
-        hostname === "127.0.0.1" || 
-        hostname.startsWith("192.168.") || 
-        hostname.startsWith("10.") ||
-        hostname === "::1";
-      
-      // Block ALL non-localhost domains immediately
-      if (!isLocalhost) {
-        console.error("🚨 SECURITY BLOCKED: Business dashboard accessed from production:", hostname);
-        window.location.href = "/dashboard";
-        return;
-      }
-    }
-  }, []);
-
   useEffect(() => {
     checkAccess();
   }, []);
@@ -802,28 +722,7 @@ export default function AccountsDashboard() {
 
   const checkAccess = async () => {
     try {
-      // ABSOLUTE BLOCK: Business accounts ONLY on localhost - NO EXCEPTIONS
-      if (typeof window !== "undefined") {
-        const hostname = window.location.hostname.toLowerCase();
-        
-        // ONLY allow localhost - block EVERYTHING else
-        const isLocalhost = 
-          hostname === "localhost" || 
-          hostname === "127.0.0.1";
-        
-        // If NOT localhost, BLOCK IMMEDIATELY
-        if (!isLocalhost) {
-          console.error("🚨 CHECKACCESS BLOCKED: Business accounts accessed from production:", hostname);
-          setLoading(false);
-          setAccessError(
-            "Business accounts are ONLY available on localhost. NOT available on furandfame.com"
-          );
-          window.location.replace("/dashboard");
-          return;
-        }
-      }
-
-      const supabase = getSupabaseClient();
+      const supabase = createClient(supabaseUrl, supabaseAnonKey);
       const { data: { user }, error } = await supabase.auth.getUser();
       
       if (error || !user) {
@@ -831,30 +730,24 @@ export default function AccountsDashboard() {
         return;
       }
 
-      // SECURITY: Only allow specific owner email on localhost
-      // REQUIRED: Must be ccates.timberlinecollective@gmail.com - NO EXCEPTIONS
-      const requiredOwnerEmail = "ccates.timberlinecollective@gmail.com".toLowerCase();
+      // Check if user is the owner
+      // Get owner email from env (trimmed to handle whitespace)
+      const ownerEmail = (OWNER_EMAIL || "").trim().toLowerCase();
       const userEmail = (user.email || "").trim().toLowerCase();
       
-      // STRICT: Only allow exact email match - NO FALLBACKS, NO ENV OVERRIDES
-      // Double-check we're on localhost
-      const currentHostname = typeof window !== "undefined" ? window.location.hostname.toLowerCase() : "";
-      const isLocalhost = 
-        currentHostname === "localhost" || 
-        currentHostname === "127.0.0.1" ||
-        currentHostname.startsWith("192.168.") ||
-        currentHostname.startsWith("10.");
-      
-      const userIsOwner = userEmail === requiredOwnerEmail && isLocalhost;
+      // If no owner email is set, allow access (for development)
+      // Otherwise, check if emails match exactly
+      const userIsOwner = !ownerEmail || userEmail === ownerEmail;
       
       // Debug logging
       console.log("🔍 Owner Access Check:", {
-        requiredOwnerEmail,
+        ownerEmailFromEnv: OWNER_EMAIL,
+        ownerEmailNormalized: ownerEmail,
         userEmailRaw: user.email,
         userEmailNormalized: userEmail,
-        emailsMatch: userEmail === requiredOwnerEmail,
+        emailsMatch: userEmail === ownerEmail,
         isOwner: userIsOwner,
-        hostname: typeof window !== "undefined" ? window.location.hostname : "server",
+        hasOwnerEmailInEnv: !!OWNER_EMAIL,
       });
       
       if (!userIsOwner) {
@@ -1277,8 +1170,8 @@ export default function AccountsDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-600 mb-1">Launch Progress</p>
-                <p className="text-2xl font-bold text-gray-900">85%</p>
-                <p className="text-xs text-gray-500 mt-1">Ready for soft launch</p>
+                <p className="text-2xl font-bold text-gray-900">43%</p>
+                <p className="text-xs text-gray-500 mt-1">3/7 steps complete</p>
             </div>
               <span className="text-4xl">🚀</span>
           </div>
@@ -1533,10 +1426,10 @@ export default function AccountsDashboard() {
                           
           {/* Business Bank Account */}
           <div className="bg-white rounded-lg shadow-lg p-6 border-2 border-gray-200">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-bold text-gray-900 mb-2">🏦 Business Bank Account</h2>
-                <p className="text-gray-600">Mercury business checking account information</p>
+                <p className="text-gray-600">Access Mercury bank account and transactions</p>
               </div>
               <a
                 href="https://mercury.com"
@@ -1546,30 +1439,6 @@ export default function AccountsDashboard() {
               >
                 Mercury Login →
               </a>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Bank Name</label>
-                <code className="text-sm font-mono text-gray-900">Mercury</code>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Account Type</label>
-                <code className="text-sm font-mono text-gray-900">Business Checking</code>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Account Number</label>
-                <BusinessInfoField field="accountNumber" label="Account Number" envKey="BUSINESS_ACCOUNT_NUMBER" />
-              </div>
-              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Routing Number</label>
-                <BusinessInfoField field="routingNumber" label="Routing Number" envKey="BUSINESS_ROUTING_NUMBER" />
-              </div>
-            </div>
-            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-              <p className="text-xs text-amber-800">
-                <strong>Security Note:</strong> This information is only visible on localhost. 
-                It will not be accessible on furandfame.com for security purposes.
-              </p>
             </div>
           </div>
                           </div>
