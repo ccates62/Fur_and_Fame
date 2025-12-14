@@ -12,6 +12,65 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const ipAddress = getClientIP(request);
     
+    // Check if API key is missing - if so, use test mode immediately
+    const hasApiKey = !!process.env.FAL_API_KEY;
+    if (!hasApiKey) {
+      console.log("⚠️ FAL_API_KEY not configured - using test mode with placeholder variants");
+      
+      // Validate required fields
+      if (!body.subjects || !Array.isArray(body.subjects) || body.subjects.length === 0) {
+        return NextResponse.json(
+          {
+            error: "Missing required fields",
+            message: "subjects array is required",
+          },
+          { status: 400 }
+        );
+      }
+      
+      // Get or create session for tracking
+      const session = await getOrCreateSession(ipAddress, body.fingerprint);
+      
+      const { subjects, backgroundType } = body;
+      const placeholderVariants: Record<string, any[]> = {};
+      
+      for (const subject of subjects) {
+        if (subject.type === "pet") {
+          const params: GeneratePortraitParams = {
+            petName: subject.name || "Pet",
+            breed: subject.breed || "Unknown",
+            petType: subject.petType || "dog",
+            imageUrl: subject.imageUrl,
+            backgroundType: backgroundType || "solid",
+          };
+          const placeholders = await generatePortraitVariants(params);
+          placeholderVariants[`${subject.name || "pet"}-${subject.id}`] = placeholders;
+        } else {
+          const params: GeneratePortraitParams = {
+            petName: "person",
+            breed: "person",
+            petType: "other",
+            imageUrl: subject.imageUrl,
+            backgroundType: backgroundType || "solid",
+            personSex: subject.sex,
+            personEthnicity: subject.ethnicity,
+            personHairColor: subject.hairColor,
+          };
+          const placeholders = await generatePortraitVariants(params);
+          placeholderVariants[`person-${subject.id}`] = placeholders;
+        }
+      }
+      
+      return NextResponse.json({
+        success: true,
+        variants: placeholderVariants,
+        session_id: session?.id,
+        testMode: true,
+        message: "Portraits generated successfully (TEST MODE - placeholder images)",
+        warning: "FAL_API_KEY is not configured. To use real AI generation, set FAL_API_KEY in your environment variables.",
+      });
+    }
+    
     // Get or create session
     const session = await getOrCreateSession(ipAddress, body.fingerprint);
     if (!session) {
@@ -129,10 +188,59 @@ export async function POST(request: NextRequest) {
     const testMode = isTestMode();
     const hasApiKey = !!process.env.FAL_API_KEY;
     
-    // If API key is missing, always use test mode (even if error occurred)
+    // If API key is missing, generate placeholder variants for all subjects
     // This ensures users can still test the flow without API key
     if (!hasApiKey || (errorMessage.includes("API key") || errorMessage.includes("FAL_API_KEY"))) {
-      console.log("⚠️ FAL_API_KEY not configured - returning test mode response");
+      console.log("⚠️ FAL_API_KEY not configured - generating placeholder variants");
+      
+      // Try to get subjects from request body to generate placeholders
+      try {
+        const body = await request.json();
+        const { subjects, backgroundType } = body;
+        
+        if (subjects && Array.isArray(subjects) && subjects.length > 0) {
+          const placeholderVariants: Record<string, any[]> = {};
+          
+          for (const subject of subjects) {
+            if (subject.type === "pet") {
+              const params: GeneratePortraitParams = {
+                petName: subject.name || "Pet",
+                breed: subject.breed || "Unknown",
+                petType: subject.petType || "dog",
+                imageUrl: subject.imageUrl,
+                backgroundType: backgroundType || "solid",
+              };
+              const placeholders = await generatePortraitVariants(params);
+              placeholderVariants[`${subject.name || "pet"}-${subject.id}`] = placeholders;
+            } else {
+              const params: GeneratePortraitParams = {
+                petName: "person",
+                breed: "person",
+                petType: "other",
+                imageUrl: subject.imageUrl,
+                backgroundType: backgroundType || "solid",
+                personSex: subject.sex,
+                personEthnicity: subject.ethnicity,
+                personHairColor: subject.hairColor,
+              };
+              const placeholders = await generatePortraitVariants(params);
+              placeholderVariants[`person-${subject.id}`] = placeholders;
+            }
+          }
+          
+          return NextResponse.json({
+            success: true,
+            variants: placeholderVariants,
+            testMode: true,
+            message: "Portraits generated successfully (TEST MODE - placeholder images)",
+            warning: "FAL_API_KEY is not configured. To use real AI generation, set FAL_API_KEY in your environment variables.",
+          });
+        }
+      } catch (parseError) {
+        console.error("Error parsing request body for placeholder generation:", parseError);
+      }
+      
+      // Fallback if we can't parse the body
       statusCode = 200;
       return NextResponse.json({
         success: true,
