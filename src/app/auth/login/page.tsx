@@ -51,12 +51,29 @@ function LoginForm() {
       }
 
       if (data.user) {
+        // Check if we're on localhost (accounts page is localhost-only)
+        const isLocalhost = typeof window !== "undefined" && (
+          window.location.hostname === "localhost" ||
+          window.location.hostname === "127.0.0.1" ||
+          window.location.hostname.startsWith("192.168.") ||
+          window.location.hostname.startsWith("10.0.")
+        );
+        const isProduction = typeof window !== "undefined" && (
+          window.location.hostname === "furandfame.com" ||
+          window.location.hostname === "www.furandfame.com" ||
+          window.location.hostname.endsWith(".vercel.app")
+        );
+        
         // Check if user is owner and redirect accordingly
         const ownerEmail = (process.env.NEXT_PUBLIC_OWNER_EMAIL || "").trim().toLowerCase();
         const userEmail = (data.user.email || "").trim().toLowerCase();
-        const isOwner = !ownerEmail || userEmail === ownerEmail;
+        // Require owner email to be set AND match exactly
+        const isOwner = ownerEmail && userEmail === ownerEmail;
         
         console.log("🔍 Login - Owner Check:", {
+          hostname: typeof window !== "undefined" ? window.location.hostname : "server",
+          isLocalhost,
+          isProduction,
           ownerEmailFromEnv: process.env.NEXT_PUBLIC_OWNER_EMAIL,
           ownerEmailNormalized: ownerEmail,
           userEmailRaw: data.user.email,
@@ -64,7 +81,8 @@ function LoginForm() {
           isOwner,
         });
         
-        if (isOwner) {
+        // Only redirect to /accounts if on localhost AND is owner
+        if (isOwner && isLocalhost && !isProduction) {
           console.log("✅ Redirecting owner to business dashboard");
           router.push("/accounts");
         } else {
