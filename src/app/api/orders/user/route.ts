@@ -24,10 +24,14 @@ export async function GET(request: NextRequest) {
         getAll() {
           return cookieStore.getAll();
         },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
-          });
+        setAll(cookiesToSet: Array<{ name: string; value: string; options?: any }>) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          } catch (error) {
+            // Ignore cookie setting errors in API routes
+          }
         },
       },
     });
