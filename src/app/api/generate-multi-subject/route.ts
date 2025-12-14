@@ -133,11 +133,11 @@ export async function POST(request: NextRequest) {
       console.log("⚠️ API key missing but test mode should handle this - this error shouldn't occur");
       // The generatePortraitVariants should have used test mode, so this is unexpected
       // Return a helpful message instead of 401
+      // Note: session_id is not available in catch block, so we omit it
       statusCode = 200;
       return NextResponse.json({
         success: true,
         variants: {},
-        session_id: session?.id,
         testMode: true,
         message: "Test mode is active but an error occurred. Please check server logs.",
         warning: "FAL_API_KEY is not configured. Portraits will use placeholder images in test mode.",
