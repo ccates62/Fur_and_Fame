@@ -8,7 +8,7 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY!;
 
 const stripe = new Stripe(stripeSecretKey, {
-  apiVersion: "2024-11-20.acacia",
+  apiVersion: "2025-11-17.clover",
 });
 
 /**
