@@ -188,66 +188,17 @@ export async function POST(request: NextRequest) {
     const testMode = isTestMode();
     const hasApiKey = !!process.env.FAL_API_KEY;
     
-    // If API key is missing, generate placeholder variants for all subjects
-    // This ensures users can still test the flow without API key
+    // If API key is missing, return helpful error (shouldn't reach here if early check worked)
     if (!hasApiKey || (errorMessage.includes("API key") || errorMessage.includes("FAL_API_KEY"))) {
-      console.log("⚠️ FAL_API_KEY not configured - generating placeholder variants");
-      
-      // Try to get subjects from request body to generate placeholders
-      try {
-        const body = await request.json();
-        const { subjects, backgroundType } = body;
-        
-        if (subjects && Array.isArray(subjects) && subjects.length > 0) {
-          const placeholderVariants: Record<string, any[]> = {};
-          
-          for (const subject of subjects) {
-            if (subject.type === "pet") {
-              const params: GeneratePortraitParams = {
-                petName: subject.name || "Pet",
-                breed: subject.breed || "Unknown",
-                petType: subject.petType || "dog",
-                imageUrl: subject.imageUrl,
-                backgroundType: backgroundType || "solid",
-              };
-              const placeholders = await generatePortraitVariants(params);
-              placeholderVariants[`${subject.name || "pet"}-${subject.id}`] = placeholders;
-            } else {
-              const params: GeneratePortraitParams = {
-                petName: "person",
-                breed: "person",
-                petType: "other",
-                imageUrl: subject.imageUrl,
-                backgroundType: backgroundType || "solid",
-                personSex: subject.sex,
-                personEthnicity: subject.ethnicity,
-                personHairColor: subject.hairColor,
-              };
-              const placeholders = await generatePortraitVariants(params);
-              placeholderVariants[`person-${subject.id}`] = placeholders;
-            }
-          }
-          
-          return NextResponse.json({
-            success: true,
-            variants: placeholderVariants,
-            testMode: true,
-            message: "Portraits generated successfully (TEST MODE - placeholder images)",
-            warning: "FAL_API_KEY is not configured. To use real AI generation, set FAL_API_KEY in your environment variables.",
-          });
-        }
-      } catch (parseError) {
-        console.error("Error parsing request body for placeholder generation:", parseError);
-      }
-      
-      // Fallback if we can't parse the body
+      console.log("⚠️ FAL_API_KEY not configured - this should have been caught earlier");
+      // Can't parse request body again in catch block, so just return helpful message
       statusCode = 200;
       return NextResponse.json({
-        success: true,
+        success: false,
         variants: {},
         testMode: true,
-        message: "Test mode is active. Portraits will use placeholder images.",
-        warning: "FAL_API_KEY is not configured. To use real AI generation, set FAL_API_KEY in your environment variables.",
+        message: "FAL_API_KEY is not configured. Please set it in your environment variables to generate portraits.",
+        warning: "Test mode is active but generation failed. Check server logs for details.",
       });
     }
     
