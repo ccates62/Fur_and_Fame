@@ -189,10 +189,17 @@ function hashCode(str: string): number {
 export async function generatePortraitVariants(
   params: GeneratePortraitParams
 ): Promise<PortraitVariant[]> {
-  // Use test mode if enabled or if API key is missing
-  if (TEST_MODE || !FAL_API_KEY) {
+  // Always use test mode if API key is missing (fail-safe)
+  if (!FAL_API_KEY) {
+    console.log("🧪 TEST MODE: FAL_API_KEY not configured - Using placeholder images (no API costs)");
+    console.log("💡 To enable production mode, set FAL_API_KEY in your environment variables");
+    return generatePlaceholderVariants(params);
+  }
+  
+  // Use test mode if explicitly enabled
+  if (TEST_MODE) {
     console.log("🧪 TEST MODE: Using placeholder images (no API costs)");
-    console.log("💡 To enable production mode, set FAL_TEST_MODE=false and ensure FAL_API_KEY is set");
+    console.log("💡 To enable production mode, set FAL_TEST_MODE=false");
     console.log("🔍 Debug: FAL_TEST_MODE=", process.env.FAL_TEST_MODE, "NODE_ENV=", process.env.NODE_ENV);
     return generatePlaceholderVariants(params);
   }
