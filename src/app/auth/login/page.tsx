@@ -62,36 +62,36 @@ function LoginForm() {
       }
 
       if (data.user) {
-        // SECURITY: Only allow specific owner email - NO EXCEPTIONS
+        // ABSOLUTE RULE: Business accounts ONLY on localhost - NO EXCEPTIONS
+        const isLocalhost = typeof window !== "undefined" && (
+          window.location.hostname === "localhost" || 
+          window.location.hostname === "127.0.0.1"
+        );
+        
+        // NEVER redirect to /accounts on production - ALWAYS go to /dashboard
+        if (!isLocalhost) {
+          console.log("👤 Production site - redirecting to customer dashboard");
+          router.push("/dashboard");
+          return;
+        }
+        
+        // Only check owner email on localhost
         const requiredOwnerEmail = "ccates.timberlinecollective@gmail.com".toLowerCase();
         const userEmail = (data.user.email || "").trim().toLowerCase();
         const isOwner = userEmail === requiredOwnerEmail;
         
-        // SECURITY: Only redirect to /accounts on localhost
-        const isLocalhost = typeof window !== "undefined" && (
-          window.location.hostname === "localhost" || 
-          window.location.hostname === "127.0.0.1" ||
-          window.location.hostname.startsWith("192.168.") ||
-          window.location.hostname.startsWith("10.")
-        );
-        
-        console.log("🔍 Login - Owner Check:", {
+        console.log("🔍 Login - Owner Check (localhost only):", {
           requiredOwnerEmail,
           userEmailRaw: data.user.email,
           userEmailNormalized: userEmail,
           isOwner,
-          isLocalhost,
-          hostname: typeof window !== "undefined" ? window.location.hostname : "server",
         });
         
-        // NEVER redirect to /accounts on production, even if owner
-        if (isOwner && isLocalhost) {
+        // On localhost, redirect owner to /accounts, others to /dashboard
+        if (isOwner) {
           console.log("✅ Redirecting owner to business dashboard (localhost only)");
           router.push("/accounts");
         } else {
-          if (isOwner && !isLocalhost) {
-            console.warn("🚨 SECURITY: Owner tried to access /accounts on production - blocked");
-          }
           console.log("👤 Redirecting to customer dashboard");
           router.push("/dashboard");
         }

@@ -6,27 +6,20 @@ export default async function AccountsLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Server-side security check: Block production domain
+  // ABSOLUTE BLOCK: Business accounts ONLY on localhost - NO EXCEPTIONS
   const headersList = await headers();
   const hostname = (headersList.get("host") || "").toLowerCase();
   
-  // Block ALL production domains - be very explicit
-  const isProduction = 
-    hostname.includes("furandfame.com") ||
-    hostname.includes("furandfame") ||
-    hostname.includes("www.furandfame");
-  
+  // ONLY allow localhost - block EVERYTHING else (including production)
   const isLocalhost = 
     hostname === "localhost:3000" || 
     hostname === "127.0.0.1:3000" ||
     hostname.startsWith("localhost:") ||
-    hostname.startsWith("127.0.0.1:") ||
-    (hostname.startsWith("192.168.") && !isProduction) ||
-    (hostname.startsWith("10.") && !isProduction);
+    hostname.startsWith("127.0.0.1:");
   
-  // Block ALL production domains and any non-localhost
-  if (isProduction || !isLocalhost) {
-    console.error("🚨 SERVER-SIDE SECURITY BLOCKED: Business dashboard accessed from:", hostname);
+  // If NOT localhost, BLOCK IMMEDIATELY
+  if (!isLocalhost) {
+    console.error("🚨 LAYOUT BLOCKED: Business accounts accessed from production:", hostname);
     redirect("/dashboard");
   }
   

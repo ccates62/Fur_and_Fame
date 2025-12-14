@@ -105,28 +105,19 @@ export default function AccountsDashboard() {
   const [isOwner, setIsOwner] = useState(false);
   const [accessError, setAccessError] = useState<string | null>(null);
   
-  // IMMEDIATE SECURITY CHECK: Block production domain - must be after hooks
+  // ABSOLUTE BLOCK: Business accounts ONLY on localhost - NO EXCEPTIONS
   if (typeof window !== "undefined") {
     const hostname = window.location.hostname.toLowerCase();
     
-    // Explicitly block production domains
-    const isProduction = 
-      hostname.includes("furandfame.com") ||
-      hostname.includes("furandfame") ||
-      hostname.includes("www.furandfame");
-    
+    // ONLY allow localhost - block EVERYTHING else (including production)
     const isLocalhost = 
       hostname === "localhost" || 
-      hostname === "127.0.0.1" || 
-      (hostname.startsWith("192.168.") && !isProduction) || 
-      (hostname.startsWith("10.") && !isProduction) ||
-      hostname === "::1";
+      hostname === "127.0.0.1";
     
-    // Block ALL production domains and any non-localhost
-    if (isProduction || !isLocalhost) {
-      console.error("🚨 CLIENT-SIDE SECURITY BLOCKED: Business dashboard accessed from:", hostname);
-      // Redirect immediately - don't render anything
-      window.location.href = "/dashboard";
+    // If NOT localhost, BLOCK IMMEDIATELY - redirect to dashboard
+    if (!isLocalhost) {
+      console.error("🚨 CLIENT BLOCKED: Business accounts accessed from production:", hostname);
+      window.location.replace("/dashboard");
       return (
         <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50 flex items-center justify-center">
           <div className="max-w-md mx-auto bg-white rounded-lg shadow-lg p-6">
@@ -134,10 +125,10 @@ export default function AccountsDashboard() {
               <div className="text-4xl mb-4">🔒</div>
               <h2 className="text-xl font-bold text-gray-900 mb-2">Access Denied</h2>
               <p className="text-gray-600 mb-4">
-                Business dashboard access is restricted to localhost only for security purposes.
+                Business accounts are ONLY available on localhost for security.
               </p>
-              <p className="text-sm text-gray-500">This page is not available on the production domain (furandfame.com).</p>
-              <p className="text-xs text-gray-400 mt-2">Redirecting to customer dashboard...</p>
+              <p className="text-sm text-gray-500">This page is NOT available on furandfame.com</p>
+              <p className="text-xs text-gray-400 mt-2">Redirecting...</p>
             </div>
           </div>
         </div>
@@ -811,32 +802,22 @@ export default function AccountsDashboard() {
 
   const checkAccess = async () => {
     try {
-      // SECURITY: Block production domain - double check
+      // ABSOLUTE BLOCK: Business accounts ONLY on localhost - NO EXCEPTIONS
       if (typeof window !== "undefined") {
         const hostname = window.location.hostname.toLowerCase();
         
-        // Explicitly check for production
-        const isProduction = 
-          hostname.includes("furandfame.com") ||
-          hostname.includes("furandfame") ||
-          hostname.includes("www.furandfame");
-        
+        // ONLY allow localhost - block EVERYTHING else
         const isLocalhost = 
           hostname === "localhost" || 
-          hostname === "127.0.0.1" || 
-          (hostname.startsWith("192.168.") && !isProduction) || 
-          (hostname.startsWith("10.") && !isProduction) ||
-          hostname === "::1";
+          hostname === "127.0.0.1";
         
-        // Block ALL production domains and any non-localhost
-        if (isProduction || !isLocalhost) {
-          console.error("🚨 SECURITY: Business dashboard blocked on production domain:", hostname);
+        // If NOT localhost, BLOCK IMMEDIATELY
+        if (!isLocalhost) {
+          console.error("🚨 CHECKACCESS BLOCKED: Business accounts accessed from production:", hostname);
           setLoading(false);
           setAccessError(
-            "Business dashboard access is restricted to localhost only for security purposes. " +
-            "This page is not available on the production domain (furandfame.com)."
+            "Business accounts are ONLY available on localhost. NOT available on furandfame.com"
           );
-          // Redirect immediately - use window.location for hard redirect
           window.location.replace("/dashboard");
           return;
         }
