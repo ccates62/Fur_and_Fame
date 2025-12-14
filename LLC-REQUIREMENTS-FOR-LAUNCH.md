@@ -208,3 +208,4 @@
 ---
 
 **Bottom line:** You need EIN, DBA, and business bank account before you can accept payments. Start with the EIN - it's free and takes 15 minutes!
+

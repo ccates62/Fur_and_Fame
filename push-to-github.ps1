@@ -70,3 +70,11 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host "🔧 Try creating the repository first:" -ForegroundColor Yellow
     Write-Host "   gh repo create Fur_and_Fame --private --source=. --remote=origin" -ForegroundColor White
 }
+
+
+
+
+
+
+
+
