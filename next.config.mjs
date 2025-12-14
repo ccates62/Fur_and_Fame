@@ -22,12 +22,16 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'www.furandfame.com',
       },
-      {
-        protocol: 'https',
-        hostname: 'furandfame.com',
-      },
-    ],
-  },
+            {
+              protocol: 'https',
+              hostname: 'furandfame.com',
+            },
+            {
+              protocol: 'https',
+              hostname: 'files.printful.com',
+            },
+          ],
+        },
   // Note: SWC minification is always enabled in Next.js 16
 };
 
