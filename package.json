@@ -13,7 +13,7 @@
     "push": "powershell.exe -ExecutionPolicy Bypass -File ./auto-push.ps1"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.91.0",
+    "@supabase/supabase-js": "^2.87.0",
     "@supabase/ssr": "^0.5.2",
     "next": "^16.0.7",
     "react": "^18",
