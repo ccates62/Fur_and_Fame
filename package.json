@@ -10,7 +10,7 @@
     "build": "npx next build",
     "start": "npx next start",
     "lint": "npx next lint",
-    "push": "git add -A && git commit -m \"Auto-commit\" && git push origin main || git push -u origin main"
+    "push": "node -e \"require('child_process').execSync('git add -A && git commit -m \\\"Auto-commit\\\" && git push origin main || git push -u origin main', {stdio: 'inherit'})\""
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.91.0",
