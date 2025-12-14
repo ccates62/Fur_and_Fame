@@ -2,15 +2,14 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseClient } from "@/lib/supabase-client";
 import Link from "next/link";
 import Script from "next/script";
 import ProgressTracker from "@/components/ProgressTracker";
 import BreedNotification from "@/components/BreedNotification";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const OWNER_EMAIL = process.env.NEXT_PUBLIC_OWNER_EMAIL || "";
+// Access environment variables lazily to avoid build-time errors
+const getOwnerEmail = () => process.env.NEXT_PUBLIC_OWNER_EMAIL || "";
 
 interface Service {
   name: string;
@@ -722,7 +721,7 @@ export default function AccountsDashboard() {
 
   const checkAccess = async () => {
     try {
-      const supabase = createClient(supabaseUrl, supabaseAnonKey);
+      const supabase = getSupabaseClient();
       const { data: { user }, error } = await supabase.auth.getUser();
       
       if (error || !user) {
@@ -732,7 +731,7 @@ export default function AccountsDashboard() {
 
       // Check if user is the owner
       // Get owner email from env (trimmed to handle whitespace)
-      const ownerEmail = (OWNER_EMAIL || "").trim().toLowerCase();
+      const ownerEmail = (getOwnerEmail() || "").trim().toLowerCase();
       const userEmail = (user.email || "").trim().toLowerCase();
       
       // If no owner email is set, allow access (for development)
@@ -741,13 +740,13 @@ export default function AccountsDashboard() {
       
       // Debug logging
       console.log("🔍 Owner Access Check:", {
-        ownerEmailFromEnv: OWNER_EMAIL,
+        ownerEmailFromEnv: getOwnerEmail(),
         ownerEmailNormalized: ownerEmail,
         userEmailRaw: user.email,
         userEmailNormalized: userEmail,
         emailsMatch: userEmail === ownerEmail,
         isOwner: userIsOwner,
-        hasOwnerEmailInEnv: !!OWNER_EMAIL,
+        hasOwnerEmailInEnv: !!getOwnerEmail(),
       });
       
       if (!userIsOwner) {
