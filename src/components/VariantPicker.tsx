@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -19,7 +19,7 @@ interface VariantPickerProps {
   onSelect: (variant: PortraitVariant, style?: string) => void;
 }
 
-export default function VariantPicker({
+function VariantPickerInner({
   variants,
   petName,
   sessionId,
@@ -265,6 +265,21 @@ export default function VariantPicker({
         </div>
       </div>
     </div>
+  );
+}
+
+export default function VariantPicker(props: VariantPickerProps) {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center p-8">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <VariantPickerInner {...props} />
+    </Suspense>
   );
 }
 
