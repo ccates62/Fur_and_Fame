@@ -39,36 +39,60 @@ function LoginForm() {
     try {
       const supabase = getSupabaseClient();
 
+      // Enhanced error logging for debugging
+      console.log("🔐 Attempting sign in with:", {
+        email: formData.email,
+        keyType: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.startsWith("sb_publishable_") ? "publishable" : "unknown"
+      });
+
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email: formData.email,
         password: formData.password,
       });
 
       if (signInError) {
-        setError(signInError.message);
+        console.error("❌ Sign in error:", {
+          message: signInError.message,
+          status: signInError.status,
+          name: signInError.name
+        });
+        setError(signInError.message || "Authentication failed. Please check your credentials.");
         setLoading(false);
         return;
       }
 
       if (data.user) {
-        // Check if user is owner and redirect accordingly
-        const ownerEmail = (process.env.NEXT_PUBLIC_OWNER_EMAIL || "").trim().toLowerCase();
+        // SECURITY: Only allow specific owner email - NO EXCEPTIONS
+        const requiredOwnerEmail = "ccates.timberlinecollective@gmail.com".toLowerCase();
         const userEmail = (data.user.email || "").trim().toLowerCase();
-        const isOwner = !ownerEmail || userEmail === ownerEmail;
+        const isOwner = userEmail === requiredOwnerEmail;
+        
+        // SECURITY: Only redirect to /accounts on localhost
+        const isLocalhost = typeof window !== "undefined" && (
+          window.location.hostname === "localhost" || 
+          window.location.hostname === "127.0.0.1" ||
+          window.location.hostname.startsWith("192.168.") ||
+          window.location.hostname.startsWith("10.")
+        );
         
         console.log("🔍 Login - Owner Check:", {
-          ownerEmailFromEnv: process.env.NEXT_PUBLIC_OWNER_EMAIL,
-          ownerEmailNormalized: ownerEmail,
+          requiredOwnerEmail,
           userEmailRaw: data.user.email,
           userEmailNormalized: userEmail,
           isOwner,
+          isLocalhost,
+          hostname: typeof window !== "undefined" ? window.location.hostname : "server",
         });
         
-        if (isOwner) {
-          console.log("✅ Redirecting owner to business dashboard");
+        // NEVER redirect to /accounts on production, even if owner
+        if (isOwner && isLocalhost) {
+          console.log("✅ Redirecting owner to business dashboard (localhost only)");
           router.push("/accounts");
         } else {
-          console.log("👤 Redirecting customer to dashboard");
+          if (isOwner && !isLocalhost) {
+            console.warn("🚨 SECURITY: Owner tried to access /accounts on production - blocked");
+          }
+          console.log("👤 Redirecting to customer dashboard");
           router.push("/dashboard");
         }
       }

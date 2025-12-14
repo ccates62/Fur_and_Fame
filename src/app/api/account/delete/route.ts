@@ -2,7 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+// Use modern secret key format (sb_secret_...)
+const secretKey = 
+  process.env.SUPABASE_SECRET_KEY || 
+  (process.env.SUPABASE_SERVICE_ROLE_KEY?.startsWith("sb_secret_") 
+    ? process.env.SUPABASE_SERVICE_ROLE_KEY 
+    : null) || "";
+
+const supabaseServiceRoleKey = secretKey;
 
 /**
  * API route to delete a user account

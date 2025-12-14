@@ -10,12 +10,10 @@
     "build": "npx next build",
     "start": "npx next start",
     "lint": "npx next lint",
-    "push": "powershell.exe -ExecutionPolicy Bypass -File ./auto-push.ps1",
-    "deploy": "npm run push",
-    "install:vercel": "npm install --legacy-peer-deps"
+    "push": "git add -A && git commit -m \"Auto-commit\" && git push origin main || git push -u origin main"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.86.2",
+    "@supabase/supabase-js": "^2.91.0",
     "@supabase/ssr": "^0.5.2",
     "next": "^16.0.7",
     "react": "^18",
@@ -27,7 +25,7 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "autoprefixer": "^10.4.20",
-    "eslint": "^9",
+    "eslint": "^8",
     "eslint-config-next": "^16.0.7",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",

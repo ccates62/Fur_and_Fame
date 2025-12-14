@@ -10,6 +10,37 @@ import BreedNotification from "@/components/BreedNotification";
 
 const OWNER_EMAIL = process.env.NEXT_PUBLIC_OWNER_EMAIL || "";
 
+// Component to display business info fields from API
+function BusinessInfoField({ field, label, envKey }: { field: string; label: string; envKey: string }) {
+  const [value, setValue] = useState<string>("Loading...");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/business-info")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.data) {
+          setValue(data.data[field] || "Not configured");
+        } else {
+          setValue("Not configured");
+        }
+      })
+      .catch(() => {
+        setValue("Not configured");
+      })
+      .finally(() => setLoading(false));
+  }, [field]);
+
+  return (
+    <>
+      <code className="text-sm font-mono text-gray-900">
+        {loading ? "Loading..." : value || "Not configured"}
+      </code>
+      <p className="text-xs text-gray-500 mt-1">Store in .env.local as {envKey}</p>
+    </>
+  );
+}
+
 interface Service {
   name: string;
   icon: string;
@@ -73,6 +104,46 @@ export default function AccountsDashboard() {
   const [loading, setLoading] = useState(true);
   const [isOwner, setIsOwner] = useState(false);
   const [accessError, setAccessError] = useState<string | null>(null);
+  
+  // IMMEDIATE SECURITY CHECK: Block production domain - must be after hooks
+  if (typeof window !== "undefined") {
+    const hostname = window.location.hostname.toLowerCase();
+    
+    // Explicitly block production domains
+    const isProduction = 
+      hostname.includes("furandfame.com") ||
+      hostname.includes("furandfame") ||
+      hostname.includes("www.furandfame");
+    
+    const isLocalhost = 
+      hostname === "localhost" || 
+      hostname === "127.0.0.1" || 
+      (hostname.startsWith("192.168.") && !isProduction) || 
+      (hostname.startsWith("10.") && !isProduction) ||
+      hostname === "::1";
+    
+    // Block ALL production domains and any non-localhost
+    if (isProduction || !isLocalhost) {
+      console.error("🚨 CLIENT-SIDE SECURITY BLOCKED: Business dashboard accessed from:", hostname);
+      // Redirect immediately - don't render anything
+      window.location.href = "/dashboard";
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50 flex items-center justify-center">
+          <div className="max-w-md mx-auto bg-white rounded-lg shadow-lg p-6">
+            <div className="text-center">
+              <div className="text-4xl mb-4">🔒</div>
+              <h2 className="text-xl font-bold text-gray-900 mb-2">Access Denied</h2>
+              <p className="text-gray-600 mb-4">
+                Business dashboard access is restricted to localhost only for security purposes.
+              </p>
+              <p className="text-sm text-gray-500">This page is not available on the production domain (furandfame.com).</p>
+              <p className="text-xs text-gray-400 mt-2">Redirecting to customer dashboard...</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+  }
 
   // Sales tracking interface
   interface Sale {
@@ -571,6 +642,26 @@ export default function AccountsDashboard() {
     }
   }, [supabaseUsage]);
 
+  // CRITICAL: Immediate production domain block - runs before checkAccess
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const hostname = window.location.hostname.toLowerCase();
+      const isLocalhost = 
+        hostname === "localhost" || 
+        hostname === "127.0.0.1" || 
+        hostname.startsWith("192.168.") || 
+        hostname.startsWith("10.") ||
+        hostname === "::1";
+      
+      // Block ALL non-localhost domains immediately
+      if (!isLocalhost) {
+        console.error("🚨 SECURITY BLOCKED: Business dashboard accessed from production:", hostname);
+        window.location.href = "/dashboard";
+        return;
+      }
+    }
+  }, []);
+
   useEffect(() => {
     checkAccess();
   }, []);
@@ -720,6 +811,37 @@ export default function AccountsDashboard() {
 
   const checkAccess = async () => {
     try {
+      // SECURITY: Block production domain - double check
+      if (typeof window !== "undefined") {
+        const hostname = window.location.hostname.toLowerCase();
+        
+        // Explicitly check for production
+        const isProduction = 
+          hostname.includes("furandfame.com") ||
+          hostname.includes("furandfame") ||
+          hostname.includes("www.furandfame");
+        
+        const isLocalhost = 
+          hostname === "localhost" || 
+          hostname === "127.0.0.1" || 
+          (hostname.startsWith("192.168.") && !isProduction) || 
+          (hostname.startsWith("10.") && !isProduction) ||
+          hostname === "::1";
+        
+        // Block ALL production domains and any non-localhost
+        if (isProduction || !isLocalhost) {
+          console.error("🚨 SECURITY: Business dashboard blocked on production domain:", hostname);
+          setLoading(false);
+          setAccessError(
+            "Business dashboard access is restricted to localhost only for security purposes. " +
+            "This page is not available on the production domain (furandfame.com)."
+          );
+          // Redirect immediately - use window.location for hard redirect
+          window.location.replace("/dashboard");
+          return;
+        }
+      }
+
       const supabase = getSupabaseClient();
       const { data: { user }, error } = await supabase.auth.getUser();
       
@@ -728,24 +850,30 @@ export default function AccountsDashboard() {
         return;
       }
 
-      // Check if user is the owner
-      // Get owner email from env (trimmed to handle whitespace)
-      const ownerEmail = (OWNER_EMAIL || "").trim().toLowerCase();
+      // SECURITY: Only allow specific owner email on localhost
+      // REQUIRED: Must be ccates.timberlinecollective@gmail.com - NO EXCEPTIONS
+      const requiredOwnerEmail = "ccates.timberlinecollective@gmail.com".toLowerCase();
       const userEmail = (user.email || "").trim().toLowerCase();
       
-      // If no owner email is set, allow access (for development)
-      // Otherwise, check if emails match exactly
-      const userIsOwner = !ownerEmail || userEmail === ownerEmail;
+      // STRICT: Only allow exact email match - NO FALLBACKS, NO ENV OVERRIDES
+      // Double-check we're on localhost
+      const currentHostname = typeof window !== "undefined" ? window.location.hostname.toLowerCase() : "";
+      const isLocalhost = 
+        currentHostname === "localhost" || 
+        currentHostname === "127.0.0.1" ||
+        currentHostname.startsWith("192.168.") ||
+        currentHostname.startsWith("10.");
+      
+      const userIsOwner = userEmail === requiredOwnerEmail && isLocalhost;
       
       // Debug logging
       console.log("🔍 Owner Access Check:", {
-        ownerEmailFromEnv: OWNER_EMAIL,
-        ownerEmailNormalized: ownerEmail,
+        requiredOwnerEmail,
         userEmailRaw: user.email,
         userEmailNormalized: userEmail,
-        emailsMatch: userEmail === ownerEmail,
+        emailsMatch: userEmail === requiredOwnerEmail,
         isOwner: userIsOwner,
-        hasOwnerEmailInEnv: !!OWNER_EMAIL,
+        hostname: typeof window !== "undefined" ? window.location.hostname : "server",
       });
       
       if (!userIsOwner) {
@@ -1424,10 +1552,10 @@ export default function AccountsDashboard() {
                           
           {/* Business Bank Account */}
           <div className="bg-white rounded-lg shadow-lg p-6 border-2 border-gray-200">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mb-4">
               <div>
                 <h2 className="text-xl font-bold text-gray-900 mb-2">🏦 Business Bank Account</h2>
-                <p className="text-gray-600">Access Mercury bank account and transactions</p>
+                <p className="text-gray-600">Mercury business checking account information</p>
               </div>
               <a
                 href="https://mercury.com"
@@ -1437,6 +1565,30 @@ export default function AccountsDashboard() {
               >
                 Mercury Login →
               </a>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Bank Name</label>
+                <code className="text-sm font-mono text-gray-900">Mercury</code>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Account Type</label>
+                <code className="text-sm font-mono text-gray-900">Business Checking</code>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Account Number</label>
+                <BusinessInfoField field="accountNumber" label="Account Number" envKey="BUSINESS_ACCOUNT_NUMBER" />
+              </div>
+              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <label className="text-xs font-semibold text-gray-500 uppercase mb-1 block">Routing Number</label>
+                <BusinessInfoField field="routingNumber" label="Routing Number" envKey="BUSINESS_ROUTING_NUMBER" />
+              </div>
+            </div>
+            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <p className="text-xs text-amber-800">
+                <strong>Security Note:</strong> This information is only visible on localhost. 
+                It will not be accessible on furandfame.com for security purposes.
+              </p>
             </div>
           </div>
                           </div>

@@ -1,7 +1,7 @@
 # Test script to verify git push works
 Write-Host "Testing Git Push..." -ForegroundColor Cyan
 
-cd c:\Users\ccate\Fur_and_Fame
+Set-Location c:\Users\ccate\Fur_and_Fame
 
 Write-Host "`nCurrent branch:" -ForegroundColor Yellow
 git branch --show-current
