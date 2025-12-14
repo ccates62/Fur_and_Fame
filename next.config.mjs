@@ -28,9 +28,7 @@ const nextConfig = {
       },
     ],
   },
-  // SWC minification disabled due to parser compatibility issues
-  // Re-enable when parser issues are resolved for better production performance
-  swcMinify: false,
+  // Note: SWC minification is always enabled in Next.js 16
 };
 
 export default nextConfig;
