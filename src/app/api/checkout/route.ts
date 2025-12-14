@@ -1,0 +1,99 @@
+import { NextRequest, NextResponse } from "next/server";
+import Stripe from "stripe";
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2025-11-17.clover",
+});
+
+/**
+ * Create Stripe checkout session for product purchase
+ * POST /api/checkout
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const { product_id, product_name, price, variant_url, variant_id } = await request.json();
+
+    if (!product_id || !product_name || !price || !variant_url) {
+      return NextResponse.json(
+        { error: "Missing required fields", message: "product_id, product_name, price, and variant_url are required" },
+        { status: 400 }
+      );
+    }
+
+    const origin = request.headers.get("origin") || "http://localhost:3000";
+
+    // Build line items based on product
+    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
+
+    if (product_id === "bundle") {
+      // Bundle includes 12x12 Canvas + Mug
+      lineItems.push(
+        {
+          price_data: {
+            currency: "usd",
+            product_data: {
+              name: "12x12 Canvas Print",
+              description: "Premium quality canvas print with your pet's portrait",
+            },
+            unit_amount: 5900, // $59 in cents
+          },
+          quantity: 1,
+        },
+        {
+          price_data: {
+            currency: "usd",
+            product_data: {
+              name: "Mug",
+              description: "Ceramic mug with your pet's portrait",
+            },
+            unit_amount: 1900, // $19 in cents
+          },
+          quantity: 1,
+        }
+      );
+    } else {
+      // Single product
+      lineItems.push({
+        price_data: {
+          currency: "usd",
+          product_data: {
+            name: product_name,
+            description: `Your pet's AI-generated portrait printed on ${product_name.toLowerCase()}`,
+            images: variant_url ? [variant_url] : undefined,
+          },
+          unit_amount: Math.round(price * 100), // Convert to cents
+        },
+        quantity: 1,
+      });
+    }
+
+    // Create Stripe checkout session
+    const checkoutSession = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      line_items: lineItems,
+      mode: "payment",
+      success_url: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/checkout?cancelled=true`,
+      metadata: {
+        type: "product_purchase",
+        product_id: product_id,
+        product_name: product_name,
+        variant_url: variant_url,
+        variant_id: variant_id || "",
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      checkout_url: checkoutSession.url,
+      session_id: checkoutSession.id,
+    });
+  } catch (error: any) {
+    console.error("Error creating checkout:", error);
+    return NextResponse.json(
+      { error: "Failed to create checkout", message: error.message },
+      { status: 500 }
+    );
+  }
+}
+
