@@ -721,6 +721,26 @@ export default function AccountsDashboard() {
 
   const checkAccess = async () => {
     try {
+      // CRITICAL: Only allow access from localhost
+      // Block access from production domains (furandfame.com, www.furandfame.com, etc.)
+      if (typeof window !== "undefined") {
+        const hostname = window.location.hostname;
+        const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1" || hostname.startsWith("192.168.") || hostname.startsWith("10.0.");
+        const isProduction = hostname === "furandfame.com" || hostname === "www.furandfame.com" || hostname.endsWith(".vercel.app");
+        
+        if (!isLocalhost || isProduction) {
+          console.warn("❌ Access denied - accounts page is only available on localhost");
+          setLoading(false);
+          setAccessError(
+            "Access denied. The accounts page is only available on localhost for security reasons."
+          );
+          setTimeout(() => {
+            router.push("/");
+          }, 2000);
+          return;
+        }
+      }
+
       const supabase = getSupabaseClient();
       const { data: { user }, error } = await supabase.auth.getUser();
       
@@ -734,12 +754,12 @@ export default function AccountsDashboard() {
       const ownerEmail = (getOwnerEmail() || "").trim().toLowerCase();
       const userEmail = (user.email || "").trim().toLowerCase();
       
-      // If no owner email is set, allow access (for development)
-      // Otherwise, check if emails match exactly
-      const userIsOwner = !ownerEmail || userEmail === ownerEmail;
+      // Require owner email to be set and match exactly
+      const userIsOwner = ownerEmail && userEmail === ownerEmail;
       
       // Debug logging
       console.log("🔍 Owner Access Check:", {
+        hostname: typeof window !== "undefined" ? window.location.hostname : "server",
         ownerEmailFromEnv: getOwnerEmail(),
         ownerEmailNormalized: ownerEmail,
         userEmailRaw: user.email,
