@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createServerClient } from "@supabase/ssr";
 import Stripe from "stripe";
 import { cookies } from "next/headers";
 
@@ -17,16 +17,21 @@ const stripe = new Stripe(stripeSecretKey, {
  */
 export async function GET(request: NextRequest) {
   try {
-    // Get authenticated user from Supabase
+    // Get authenticated user from Supabase using SSR client
     const cookieStore = await cookies();
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
       cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options);
+          });
         },
       },
     });
-
+    
     const {
       data: { user },
       error: authError,
