@@ -45,7 +45,8 @@ export async function POST(request: NextRequest) {
             backgroundType: backgroundType || "solid",
           };
           const placeholders = await generatePortraitVariants(params);
-          placeholderVariants[`${subject.name || "pet"}-${subject.id}`] = placeholders;
+          console.log(`Early check: Generated ${placeholders?.length || 0} placeholder variants for ${subject.name || "pet"}`);
+          placeholderVariants[`${subject.name || "pet"}-${subject.id || 'unknown'}`] = placeholders;
         } else {
           const params: GeneratePortraitParams = {
             petName: "person",
@@ -150,8 +151,9 @@ export async function POST(request: NextRequest) {
 
           const variants = await generatePortraitVariants(params);
           // Ensure we got variants - if not, use placeholders
+          console.log(`Generated ${variants?.length || 0} variants for ${petName}`);
           if (variants && variants.length > 0) {
-            allVariants[`${petName}-${subject.id}`] = variants;
+            allVariants[`${petName}-${subject.id || 'unknown'}`] = variants;
           } else {
             console.warn(`No variants returned for ${petName}, using placeholders`);
             const placeholderParams: GeneratePortraitParams = {
@@ -162,7 +164,8 @@ export async function POST(request: NextRequest) {
               backgroundType: backgroundType || "solid",
             };
             const placeholders = await generatePortraitVariants(placeholderParams);
-            allVariants[`${petName}-${subject.id}`] = placeholders;
+            console.log(`Generated ${placeholders?.length || 0} placeholder variants`);
+            allVariants[`${petName}-${subject.id || 'unknown'}`] = placeholders;
           }
         } else {
           // Generate person portraits (basic mode for now)
@@ -179,12 +182,14 @@ export async function POST(request: NextRequest) {
 
           const variants = await generatePortraitVariants(params);
           // Ensure we got variants - if not, use placeholders
+          console.log(`Generated ${variants?.length || 0} variants for person`);
           if (variants && variants.length > 0) {
-            allVariants[`person-${subject.id}`] = variants;
+            allVariants[`person-${subject.id || 'unknown'}`] = variants;
           } else {
             console.warn(`No variants returned for person, using placeholders`);
             const placeholders = await generatePortraitVariants(params);
-            allVariants[`person-${subject.id}`] = placeholders;
+            console.log(`Generated ${placeholders?.length || 0} placeholder variants`);
+            allVariants[`person-${subject.id || 'unknown'}`] = placeholders;
           }
         }
       } catch (subjectError: any) {
@@ -205,12 +210,16 @@ export async function POST(request: NextRequest) {
           allVariants[key] = placeholders;
         } catch (fallbackError) {
           console.error("Even fallback placeholders failed:", fallbackError);
-          // Last resort - create minimal placeholder
-          allVariants[`${subject.type}-${subject.id}`] = [{
-            id: "fallback-1",
-            url: "https://picsum.photos/800/1000?random=1",
-            prompt: "Placeholder image",
-          }];
+          // Last resort - create 3 minimal placeholders
+          const fallbackVariants = [];
+          for (let i = 1; i <= 3; i++) {
+            fallbackVariants.push({
+              id: `fallback-${i}`,
+              url: `https://picsum.photos/800/1000?random=${i}`,
+              prompt: `Placeholder image ${i}`,
+            });
+          }
+          allVariants[`${subject.type}-${subject.id}`] = fallbackVariants;
         }
       }
     }
