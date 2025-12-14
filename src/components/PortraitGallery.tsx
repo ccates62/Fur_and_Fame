@@ -43,13 +43,13 @@ const examplePortraits = [
   },
   {
     id: 7,
-    url: "https://images.unsplash.com/photo-1608848461950-0fe51dfc41ff",
+    url: "https://images.unsplash.com/photo-1571566882372-1598d88abd90",
     style: "Cowboy",
     petName: "Daisy",
   },
   {
     id: 8,
-    url: "https://images.unsplash.com/photo-1571566882372-1598d88abd90",
+    url: "https://images.unsplash.com/photo-1601758228041-f3b2795255f1",
     style: "Pirate Captain",
     petName: "Rocky",
   },
@@ -84,7 +84,11 @@ export default function PortraitGallery() {
                   sizes="(max-width: 768px) 50vw, 25vw"
                   loading={index === 0 ? "eager" : "lazy"}
                   priority={index === 0}
-                  unoptimized
+                  onError={(e) => {
+                    // Fallback to placeholder if image fails to load
+                    const target = e.target as HTMLImageElement;
+                    target.src = `https://picsum.photos/400/500?random=${portrait.id}`;
+                  }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 <div className="absolute bottom-0 left-0 right-0 p-4 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300">
