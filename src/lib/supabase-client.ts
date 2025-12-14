@@ -39,8 +39,8 @@ export function getSupabaseClient() {
   
   // For server-side (shouldn't happen in client components, but just in case)
   // Create a module-level singleton
-  if (!globalThis.__supabaseClient) {
-    (globalThis as any).__supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+  if (!global.__supabaseClient) {
+    global.__supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
   }
-  return (globalThis as any).__supabaseClient;
+  return global.__supabaseClient;
 }
