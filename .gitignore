@@ -29,6 +29,9 @@ yarn-error.log*
 .env*.local
 vercel-import.env
 
+# Documentation files that may contain secrets (review before committing)
+# STRIPE-LIVE-KEYS-SETUP.md
+
 # vercel
 .vercel
 
