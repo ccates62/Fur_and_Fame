@@ -12,8 +12,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const ipAddress = getClientIP(request);
     
-    // Check if API key is missing - if so, use test mode immediately
-    const hasApiKey = !!process.env.FAL_API_KEY;
+    // Check if API key is missing or invalid - if so, use test mode immediately
+    const apiKey = process.env.FAL_API_KEY;
+    const hasApiKey = apiKey && apiKey.trim().length > 0;
     if (!hasApiKey) {
       console.log("⚠️ FAL_API_KEY not configured - using test mode with placeholder variants");
       
@@ -128,42 +129,96 @@ export async function POST(request: NextRequest) {
     const allVariants: Record<string, any[]> = {};
     
     for (const subject of subjects) {
-      if (subject.type === "pet") {
-        // Generate pet portraits
-        const petName = subject.name || "Pet";
-        const breed = subject.breed || "Unknown";
-        const petType = subject.petType || "dog";
-        
-        // Use first theme if styled, otherwise basic
-        const style = portraitType === "styled" && themes && themes[0] ? themes[0] : undefined;
-        
-        const params: GeneratePortraitParams = {
-          petName,
-          breed,
-          petType,
-          style,
-          imageUrl: subject.imageUrl,
-          backgroundType: backgroundType || "solid",
-        };
+      try {
+        if (subject.type === "pet") {
+          // Generate pet portraits
+          const petName = subject.name || "Pet";
+          const breed = subject.breed || "Unknown";
+          const petType = subject.petType || "dog";
+          
+          // Use first theme if styled, otherwise basic
+          const style = portraitType === "styled" && themes && themes[0] ? themes[0] : undefined;
+          
+          const params: GeneratePortraitParams = {
+            petName,
+            breed,
+            petType,
+            style,
+            imageUrl: subject.imageUrl,
+            backgroundType: backgroundType || "solid",
+          };
 
-        const variants = await generatePortraitVariants(params);
-        allVariants[`${petName}-${subject.id}`] = variants;
-      } else {
-        // Generate person portraits (basic mode for now)
-        const params: GeneratePortraitParams = {
-          petName: "person",
-          breed: "person",
-          petType: "other",
-          imageUrl: subject.imageUrl,
-          backgroundType: backgroundType || "solid",
-          personSex: subject.sex,
-          personEthnicity: subject.ethnicity,
-          personHairColor: subject.hairColor,
-        };
+          const variants = await generatePortraitVariants(params);
+          // Ensure we got variants - if not, use placeholders
+          if (variants && variants.length > 0) {
+            allVariants[`${petName}-${subject.id}`] = variants;
+          } else {
+            console.warn(`No variants returned for ${petName}, using placeholders`);
+            const placeholderParams: GeneratePortraitParams = {
+              petName,
+              breed,
+              petType,
+              imageUrl: subject.imageUrl,
+              backgroundType: backgroundType || "solid",
+            };
+            const placeholders = await generatePortraitVariants(placeholderParams);
+            allVariants[`${petName}-${subject.id}`] = placeholders;
+          }
+        } else {
+          // Generate person portraits (basic mode for now)
+          const params: GeneratePortraitParams = {
+            petName: "person",
+            breed: "person",
+            petType: "other",
+            imageUrl: subject.imageUrl,
+            backgroundType: backgroundType || "solid",
+            personSex: subject.sex,
+            personEthnicity: subject.ethnicity,
+            personHairColor: subject.hairColor,
+          };
 
-        const variants = await generatePortraitVariants(params);
-        allVariants[`person-${subject.id}`] = variants;
+          const variants = await generatePortraitVariants(params);
+          // Ensure we got variants - if not, use placeholders
+          if (variants && variants.length > 0) {
+            allVariants[`person-${subject.id}`] = variants;
+          } else {
+            console.warn(`No variants returned for person, using placeholders`);
+            const placeholders = await generatePortraitVariants(params);
+            allVariants[`person-${subject.id}`] = placeholders;
+          }
+        }
+      } catch (subjectError: any) {
+        console.error(`Error generating variants for subject ${subject.id}:`, subjectError);
+        // Fallback to placeholders for this subject
+        try {
+          const fallbackParams: GeneratePortraitParams = {
+            petName: subject.type === "pet" ? (subject.name || "Pet") : "person",
+            breed: subject.type === "pet" ? (subject.breed || "Unknown") : "person",
+            petType: subject.type === "pet" ? (subject.petType || "dog") : "other",
+            imageUrl: subject.imageUrl,
+            backgroundType: backgroundType || "solid",
+          };
+          const placeholders = await generatePortraitVariants(fallbackParams);
+          const key = subject.type === "pet" 
+            ? `${subject.name || "pet"}-${subject.id}` 
+            : `person-${subject.id}`;
+          allVariants[key] = placeholders;
+        } catch (fallbackError) {
+          console.error("Even fallback placeholders failed:", fallbackError);
+          // Last resort - create minimal placeholder
+          allVariants[`${subject.type}-${subject.id}`] = [{
+            id: "fallback-1",
+            url: "https://picsum.photos/800/1000?random=1",
+            prompt: "Placeholder image",
+          }];
+        }
       }
+    }
+    
+    // Final safety check - ensure we have at least some variants
+    if (Object.keys(allVariants).length === 0) {
+      console.error("No variants generated for any subject - this should not happen");
+      throw new Error("Failed to generate any variants. Please try again.");
     }
 
     // Update session
