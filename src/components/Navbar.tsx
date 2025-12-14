@@ -16,7 +16,7 @@ export default function Navbar() {
     
     // Listen for auth changes
     const supabase = getSupabaseClient();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session) => {
       if (session?.user) {
         setUser(session.user);
       } else {
