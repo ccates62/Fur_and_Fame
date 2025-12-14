@@ -2,12 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseClient } from "@/lib/supabase-client";
 import Link from "next/link";
-import Stripe from "stripe";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 interface Order {
   id: string;
@@ -38,7 +34,7 @@ export default function CustomerAccountPage() {
 
   const checkUser = async () => {
     try {
-      const supabase = createClient(supabaseUrl, supabaseAnonKey);
+      const supabase = getSupabaseClient();
       const { data: { user: currentUser }, error } = await supabase.auth.getUser();
       
       if (error || !currentUser) {
@@ -80,7 +76,7 @@ export default function CustomerAccountPage() {
 
   const handleSignOut = async () => {
     try {
-      const supabase = createClient(supabaseUrl, supabaseAnonKey);
+      const supabase = getSupabaseClient();
       await supabase.auth.signOut();
       router.push("/");
     } catch (err) {

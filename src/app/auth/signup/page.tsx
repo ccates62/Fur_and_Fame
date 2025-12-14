@@ -1,13 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseClient } from "@/lib/supabase-client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { validateUserContent } from "@/lib/content-moderation";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -62,7 +59,7 @@ export default function SignUpPage() {
     }
 
     try {
-      const supabase = createClient(supabaseUrl, supabaseAnonKey);
+      const supabase = getSupabaseClient();
 
       // Sign up user
       const { data, error: signUpError } = await supabase.auth.signUp({

@@ -1,12 +1,9 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseClient } from "@/lib/supabase-client";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 function LoginForm() {
   const router = useRouter();
@@ -40,7 +37,7 @@ function LoginForm() {
     setLoading(true);
 
     try {
-      const supabase = createClient(supabaseUrl, supabaseAnonKey);
+      const supabase = getSupabaseClient();
 
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email: formData.email,

@@ -2,11 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseClient } from "@/lib/supabase-client";
 import Link from "next/link";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export default function Navbar() {
   const router = useRouter();
@@ -18,7 +15,7 @@ export default function Navbar() {
     checkUser();
     
     // Listen for auth changes
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    const supabase = getSupabaseClient();
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         setUser(session.user);
@@ -35,7 +32,7 @@ export default function Navbar() {
 
   const checkUser = async () => {
     try {
-      const supabase = createClient(supabaseUrl, supabaseAnonKey);
+      const supabase = getSupabaseClient();
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       setUser(currentUser);
     } catch (err) {
@@ -47,7 +44,7 @@ export default function Navbar() {
 
   const handleSignOut = async () => {
     try {
-      const supabase = createClient(supabaseUrl, supabaseAnonKey);
+      const supabase = getSupabaseClient();
       await supabase.auth.signOut();
       setUser(null);
       router.push("/");

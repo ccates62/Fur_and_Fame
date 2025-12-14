@@ -1,12 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { getSupabaseClient } from "@/lib/supabase-client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export default function AccountSettingsPage() {
   const router = useRouter();
@@ -23,7 +20,7 @@ export default function AccountSettingsPage() {
 
   const checkUser = async () => {
     try {
-      const supabase = createClient(supabaseUrl, supabaseAnonKey);
+      const supabase = getSupabaseClient();
       const { data: { user: currentUser }, error } = await supabase.auth.getUser();
       
       if (error) {
@@ -45,7 +42,7 @@ export default function AccountSettingsPage() {
 
   const handleSignOut = async () => {
     try {
-      const supabase = createClient(supabaseUrl, supabaseAnonKey);
+      const supabase = getSupabaseClient();
       await supabase.auth.signOut();
       router.push("/");
     } catch (err: any) {
@@ -79,7 +76,7 @@ export default function AccountSettingsPage() {
       }
 
       // Sign out and redirect
-      const supabase = createClient(supabaseUrl, supabaseAnonKey);
+      const supabase = getSupabaseClient();
       await supabase.auth.signOut();
       router.push("/?message=Account deleted successfully");
     } catch (err: any) {
