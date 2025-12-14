@@ -221,8 +221,12 @@ async function generateSingleVariant(
   variantNumber: number,
   params: GeneratePortraitParams
 ): Promise<PortraitVariant> {
+  // This function should only be called when FAL_API_KEY exists
+  // But add a safety check to fall back to test mode if somehow called without key
   if (!FAL_API_KEY) {
-    throw new Error("FAL_API_KEY is not configured");
+    console.warn("⚠️ FAL_API_KEY missing in generateSingleVariant - this should not happen");
+    // Fall back to placeholder instead of throwing error
+    return generatePlaceholderVariants(params)[0];
   }
 
   try {
