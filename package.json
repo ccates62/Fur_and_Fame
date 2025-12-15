@@ -11,11 +11,13 @@
     "start": "npx next start",
     "lint": "npx next lint",
     "push": "node scripts/push.js",
-    "push:msg": "node scripts/push.js"
+    "push:msg": "node scripts/push.js",
+    "printful:list-products": "node scripts/list-printful-products.js",
+    "printful:get-variants": "node scripts/get-printful-variants.js"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.86.2",
     "@supabase/ssr": "^0.5.2",
+    "@supabase/supabase-js": "^2.86.2",
     "next": "^16.0.7",
     "react": "^18",
     "react-dom": "^18",
@@ -26,6 +28,7 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "autoprefixer": "^10.4.20",
+    "dotenv": "^17.2.3",
     "eslint": "^8",
     "eslint-config-next": "^16.0.7",
     "postcss": "^8",

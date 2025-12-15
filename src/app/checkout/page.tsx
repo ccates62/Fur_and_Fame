@@ -12,31 +12,28 @@ interface Product {
   price: number;
   icon: string;
   popular?: boolean;
+  sizes?: { size: string; price: number; variantKey: string }[]; // Add sizes for canvas
 }
 
+// Only show products that are configured in Printful
+// Products without valid Printful product IDs will be hidden
 const products: Product[] = [
   {
-    id: "canvas-12x12",
-    name: "12x12 Canvas",
+    id: "canvas",
+    name: "Canvas Print",
     description: "Premium quality canvas print, perfect for displaying your pet's portrait",
-    price: 59,
-    icon: "🖼️",
-  },
-  {
-    id: "canvas-16x20",
-    name: "16x20 Canvas",
-    description: "Large format canvas print for maximum impact",
-    price: 89,
+    price: 59, // Default price (12x12)
     icon: "🖼️",
     popular: true,
+    sizes: [
+      { size: "12x12", price: 59, variantKey: "canvas-12x12" },
+      { size: "16x20", price: 89, variantKey: "canvas-16x20" },
+    ],
   },
-  {
-    id: "mug",
-    name: "Mug",
-    description: "Ceramic mug with your pet's portrait, perfect for daily use",
-    price: 19,
-    icon: "☕",
-  },
+  // NOTE: Other products (blanket, t-shirt, poster) are commented out
+  // because they don't exist in your Printful store yet.
+  // Uncomment and update product IDs in PRINTFUL_PRODUCT_MAP once you set them up in Printful.
+  /*
   {
     id: "blanket",
     name: "Throw Blanket",
@@ -58,20 +55,14 @@ const products: Product[] = [
     price: 24,
     icon: "📄",
   },
-  {
-    id: "bundle",
-    name: "Bundle",
-    description: "Best value! Get both 12x12 Canvas and Mug together",
-    price: 99,
-    icon: "🎁",
-    popular: true,
-  },
+  */
 ];
 
 export default function CheckoutPage() {
   const router = useRouter();
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedVariant, setSelectedVariant] = useState<any>(null);
+  const [selectedSize, setSelectedSize] = useState<string | null>(null); // Add size selection for canvas
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mockupUrls, setMockupUrls] = useState<Record<string, string>>({});
@@ -85,6 +76,12 @@ export default function CheckoutPage() {
         try {
           const parsed = JSON.parse(storedVariant);
           setSelectedVariant(parsed.variant || parsed);
+          
+          // Auto-select first canvas size so mockup shows immediately
+          const canvasProduct = products.find(p => p.id === "canvas");
+          if (canvasProduct?.sizes && canvasProduct.sizes.length > 0) {
+            setSelectedSize(canvasProduct.sizes[0].size);
+          }
         } catch (e) {
           console.error("Error parsing selected variant:", e);
           router.push("/variants");
@@ -104,9 +101,77 @@ export default function CheckoutPage() {
       const newMockupUrls: Record<string, string> = {};
       const newLoadingMockups: Record<string, boolean> = {};
 
-      // Fetch mockups for each product (except bundle, which we'll handle separately)
+      // Fetch mockups for each product
       for (const product of products) {
-        if (product.id === "bundle") continue; // Bundle will show canvas + mug separately
+        // For canvas, fetch mockups for each size
+        if (product.id === "canvas" && product.sizes) {
+          for (const sizeOption of product.sizes) {
+            const productIdForMockup = sizeOption.variantKey;
+            newLoadingMockups[productIdForMockup] = true;
+            setLoadingMockups((prev) => ({ ...prev, [productIdForMockup]: true }));
+
+            try {
+              const response = await fetch("/api/printful-mockup", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  product_id: productIdForMockup,
+                  image_url: selectedVariant.url,
+                }),
+              });
+
+              if (response.ok) {
+                const data = await response.json();
+                if (data.mockup_url) {
+                  newMockupUrls[productIdForMockup] = data.mockup_url;
+                } else if (data.task_key) {
+                  // Poll for mockup if task-based
+                  const pollMockup = async () => {
+                    let attempts = 0;
+                    const maxAttempts = 10;
+                    while (attempts < maxAttempts) {
+                      await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait 2 seconds
+                      try {
+                        const statusResponse = await fetch(`/api/printful-mockup/status?task_key=${data.task_key}`);
+                        if (statusResponse.ok) {
+                          const statusData = await statusResponse.json();
+                          if (statusData.mockup_url) {
+                            newMockupUrls[productIdForMockup] = statusData.mockup_url;
+                            setMockupUrls((prev) => ({ ...prev, [productIdForMockup]: statusData.mockup_url }));
+                            setLoadingMockups((prev) => ({ ...prev, [productIdForMockup]: false }));
+                            return;
+                          }
+                        }
+                        // 202 (Accepted) or 404 means not ready yet - continue polling (don't log as error)
+                      } catch (err) {
+                        // Network errors - continue polling
+                        console.debug(`Polling attempt ${attempts + 1} failed, continuing...`);
+                      }
+                      attempts++;
+                    }
+                    // Fallback to original image if polling fails
+                    newMockupUrls[productIdForMockup] = selectedVariant.url;
+                    setLoadingMockups((prev) => ({ ...prev, [productIdForMockup]: false }));
+                  };
+                  pollMockup();
+                } else {
+                  // Fallback to original image
+                  newMockupUrls[productIdForMockup] = selectedVariant.url;
+                }
+              } else {
+                // Fallback to original image on error
+                newMockupUrls[productIdForMockup] = selectedVariant.url;
+              }
+            } catch (err) {
+              console.error(`Error fetching mockup for ${productIdForMockup}:`, err);
+              // Fallback to original image
+              newMockupUrls[productIdForMockup] = selectedVariant.url;
+            } finally {
+              setLoadingMockups((prev) => ({ ...prev, [productIdForMockup]: false }));
+            }
+          }
+          continue; // Skip the regular product mockup fetch for canvas
+        }
 
         newLoadingMockups[product.id] = true;
         setLoadingMockups((prev) => ({ ...prev, [product.id]: true }));
@@ -125,30 +190,36 @@ export default function CheckoutPage() {
             const data = await response.json();
             if (data.mockup_url) {
               newMockupUrls[product.id] = data.mockup_url;
-            } else if (data.task_key) {
-              // Poll for mockup if task-based
-              const pollMockup = async () => {
-                let attempts = 0;
-                const maxAttempts = 10;
-                while (attempts < maxAttempts) {
-                  await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait 2 seconds
-                  const statusResponse = await fetch(`/api/printful-mockup/status?task_key=${data.task_key}`);
-                  if (statusResponse.ok) {
-                    const statusData = await statusResponse.json();
-                    if (statusData.mockup_url) {
-                      newMockupUrls[product.id] = statusData.mockup_url;
-                      setMockupUrls((prev) => ({ ...prev, [product.id]: statusData.mockup_url }));
-                      setLoadingMockups((prev) => ({ ...prev, [product.id]: false }));
-                      return;
+                } else if (data.task_key) {
+                  // Poll for mockup if task-based
+                  const pollMockup = async () => {
+                    let attempts = 0;
+                    const maxAttempts = 10;
+                    while (attempts < maxAttempts) {
+                      await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait 2 seconds
+                      try {
+                        const statusResponse = await fetch(`/api/printful-mockup/status?task_key=${data.task_key}`);
+                        if (statusResponse.ok) {
+                          const statusData = await statusResponse.json();
+                          if (statusData.mockup_url) {
+                            newMockupUrls[product.id] = statusData.mockup_url;
+                            setMockupUrls((prev) => ({ ...prev, [product.id]: statusData.mockup_url }));
+                            setLoadingMockups((prev) => ({ ...prev, [product.id]: false }));
+                            return;
+                          }
+                        }
+                        // 202 (Accepted) or 404 means not ready yet - continue polling (don't log as error)
+                      } catch (err) {
+                        // Network errors - continue polling
+                        console.debug(`Polling attempt ${attempts + 1} failed, continuing...`);
+                      }
+                      attempts++;
                     }
-                  }
-                  attempts++;
-                }
-                // Fallback to original image if polling fails
-                newMockupUrls[product.id] = selectedVariant.url;
-                setLoadingMockups((prev) => ({ ...prev, [product.id]: false }));
-              };
-              pollMockup();
+                    // Fallback to original image if polling fails
+                    newMockupUrls[product.id] = selectedVariant.url;
+                    setLoadingMockups((prev) => ({ ...prev, [product.id]: false }));
+                  };
+                  pollMockup();
             } else {
               // Fallback to original image
               newMockupUrls[product.id] = selectedVariant.url;
@@ -175,6 +246,17 @@ export default function CheckoutPage() {
   const handleProductSelect = (product: Product) => {
     setSelectedProduct(product);
     setError(null);
+    // Auto-select first size for canvas products
+    if (product.id === "canvas" && product.sizes && product.sizes.length > 0) {
+      setSelectedSize(product.sizes[0].size);
+    } else {
+      setSelectedSize(null);
+    }
+  };
+
+  const handleSizeSelect = (size: string) => {
+    setSelectedSize(size);
+    setError(null);
   };
 
   const handleCheckout = async () => {
@@ -183,8 +265,29 @@ export default function CheckoutPage() {
       return;
     }
 
+    // For canvas, require size selection
+    if (selectedProduct.id === "canvas" && !selectedSize) {
+      setError("Please select a canvas size");
+      return;
+    }
+
     setLoading(true);
     setError(null);
+
+    // Determine the product ID and price based on selection
+    let productId = selectedProduct.id;
+    let productName = selectedProduct.name;
+    let price = selectedProduct.price;
+
+    // For canvas, use the size-specific variant key
+    if (selectedProduct.id === "canvas" && selectedSize) {
+      const sizeOption = selectedProduct.sizes?.find(s => s.size === selectedSize);
+      if (sizeOption) {
+        productId = sizeOption.variantKey; // Use "canvas-12x12" or "canvas-16x20"
+        productName = `${selectedSize} ${selectedProduct.name}`;
+        price = sizeOption.price;
+      }
+    }
 
     try {
       const response = await fetch("/api/checkout", {
@@ -193,9 +296,9 @@ export default function CheckoutPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          product_id: selectedProduct.id,
-          product_name: selectedProduct.name,
-          price: selectedProduct.price,
+          product_id: productId,
+          product_name: productName,
+          price: price,
           variant_url: selectedVariant.url,
           variant_id: selectedVariant.id,
         }),
@@ -287,68 +390,60 @@ export default function CheckoutPage() {
                     )}
                     
                     {/* Product Preview with Printful Mockup */}
-                    <div className="relative aspect-square bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
-                      {loadingMockups[product.id] ? (
+                    <div className="relative aspect-square bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden min-h-[260px]">
+                      {product.id === "canvas" ? (
+                        // Canvas: Show mockup for selected size, or default to first size, or show placeholder
+                        (() => {
+                          // Determine which size to show: selected size, or first size, or none
+                          const displaySize = selectedSize || (product.sizes && product.sizes[0]?.size);
+                          const mockupKey = displaySize ? `canvas-${displaySize}` : null;
+                          const isLoading = mockupKey ? loadingMockups[mockupKey] : false;
+                          const mockupUrl = mockupKey ? mockupUrls[mockupKey] : null;
+                          
+                          if (isLoading) {
+                            return (
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600"></div>
+                              </div>
+                            );
+                          } else if (mockupUrl) {
+                            return (
+                              <Image
+                                src={mockupUrl}
+                                alt={`Canvas ${displaySize} mockup`}
+                                fill
+                                className="object-contain"
+                                sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                              />
+                            );
+                          } else {
+                            // Show placeholder portrait image
+                            return (
+                              <div className="absolute inset-0 bg-white rounded shadow-lg border-2 border-amber-800/20 flex items-center justify-center p-4">
+                                {selectedVariant ? (
+                                  <Image
+                                    src={selectedVariant.url}
+                                    alt="Canvas preview"
+                                    fill
+                                    className="object-contain rounded"
+                                    sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                                  />
+                                ) : (
+                                  <div className="text-center text-gray-400">
+                                    <p className="text-sm">Loading preview...</p>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          }
+                        })()
+                      ) : loadingMockups[product.id] ? (
                         // Loading state while fetching Printful mockup
                         <div className="absolute inset-0 flex items-center justify-center">
                           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600"></div>
                         </div>
-                      ) : product.id === "bundle" ? (
-                        // Bundle: Show canvas and mug mockups side-by-side
-                        <div className="absolute inset-0 flex items-center justify-center gap-2 p-2">
-                          {/* Canvas mockup */}
-                          <div className="relative w-2/5 h-4/5">
-                            {mockupUrls["canvas-12x12"] ? (
-                              <Image
-                                src={mockupUrls["canvas-12x12"]}
-                                alt="Canvas mockup"
-                                fill
-                                className="object-contain"
-                                sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                              />
-                            ) : (
-                              <div className="absolute inset-0 bg-white rounded shadow-lg border-2 border-amber-800/20 flex items-center justify-center">
-                                {selectedVariant && (
-                                  <Image
-                                    src={selectedVariant.url}
-                                    alt="Canvas"
-                                    fill
-                                    className="object-cover rounded"
-                                    sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                                  />
-                                )}
-                              </div>
-                            )}
-                          </div>
-                          {/* Mug mockup */}
-                          <div className="relative w-2/5 h-4/5">
-                            {mockupUrls["mug"] ? (
-                              <Image
-                                src={mockupUrls["mug"]}
-                                alt="Mug mockup"
-                                fill
-                                className="object-contain"
-                                sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                              />
-                            ) : (
-                              <div className="absolute inset-0 bg-gradient-to-b from-white to-gray-200 rounded-t-full rounded-b-2xl shadow-lg border-2 border-gray-300 flex items-center justify-center">
-                                <div className="absolute inset-1 rounded-t-full rounded-b-2xl overflow-hidden">
-                                  {selectedVariant && (
-                                    <Image
-                                      src={selectedVariant.url}
-                                      alt="Mug"
-                                      fill
-                                      className="object-cover rounded-t-full"
-                                      sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                                    />
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
                       ) : mockupUrls[product.id] ? (
-                        // Show Printful mockup if available
+                        // Show Printful mockup if available (for other products)
                         <Image
                           src={mockupUrls[product.id]}
                           alt={`${product.name} mockup`}
@@ -362,7 +457,7 @@ export default function CheckoutPage() {
                           src={selectedVariant.url}
                           alt={`${product.name} with portrait`}
                           fill
-                          className="object-cover"
+                          className="object-cover rounded-lg"
                           sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
                         />
                       ) : null}
@@ -382,9 +477,37 @@ export default function CheckoutPage() {
                       <p className="text-sm text-gray-600 text-center mb-3 min-h-[2.5rem]">
                         {product.description}
                       </p>
+                      
+                      {/* Size Selection for Canvas */}
+                      {product.id === "canvas" && product.sizes && isSelected && (
+                        <div className="mb-3">
+                          <p className="text-xs font-semibold text-gray-700 mb-2">Select Size:</p>
+                          <div className="flex gap-2 justify-center">
+                            {product.sizes.map((sizeOption) => (
+                              <button
+                                key={sizeOption.size}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSizeSelect(sizeOption.size);
+                                }}
+                                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                                  selectedSize === sizeOption.size
+                                    ? "bg-amber-500 text-white shadow-md scale-105"
+                                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                }`}
+                              >
+                                {sizeOption.size}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
                       <div className="text-center">
                         <p className="text-2xl font-bold text-amber-600">
-                          ${product.price}
+                          ${product.id === "canvas" && selectedSize && isSelected
+                            ? product.sizes?.find(s => s.size === selectedSize)?.price || product.price
+                            : product.price}
                         </p>
                       </div>
                     </div>
