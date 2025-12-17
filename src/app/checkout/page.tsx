@@ -78,14 +78,6 @@ export default function CheckoutPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedProductForModal, setSelectedProductForModal] = useState<Product | null>(null);
   
-  // Debug: Log state changes
-  useEffect(() => {
-    console.log(`🔄 mockupUrls state changed:`, mockupUrls);
-    console.log(`🔄 mockupUrls keys:`, Object.keys(mockupUrls));
-    Object.entries(mockupUrls).forEach(([key, url]) => {
-      console.log(`🔄   - ${key}: ${url ? url.substring(0, 50) + '...' : 'NULL'}`);
-    });
-  }, [mockupUrls]);
   const [shippingAddress, setShippingAddress] = useState({
     address1: "",
     city: "",
@@ -579,7 +571,7 @@ export default function CheckoutPage() {
                     )}
                     
                     {/* Product Preview with Printful Mockup */}
-                    <div className="relative aspect-square bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden min-h-[260px]">
+                    <div>
                       {product.sizes ? (
                         // Products with sizes: Show mockup for selected size if this product is selected, otherwise show first size
                         (() => {
@@ -590,158 +582,35 @@ export default function CheckoutPage() {
                           const sizeOption = displaySize ? product.sizes.find(s => s.size === displaySize) : null;
                           const mockupKey = sizeOption ? sizeOption.variantKey : null;
                           const isLoading = mockupKey ? (loadingMockups[mockupKey] ?? false) : false;
-                          // Try both the direct lookup and the state value
                           const mockupUrl = mockupKey ? (mockupUrls[mockupKey] || null) : null;
                           
-                          // CRITICAL: Log the actual values being used in the condition
-                          if (mockupKey) {
-                            console.log(`🔬 CONDITION CHECK for ${mockupKey}:`, {
-                              'isLoading': isLoading,
-                              'mockupUrl exists': !!mockupUrl,
-                              'mockupUrl value': mockupUrl,
-                              'Will enter loading branch': isLoading,
-                              'Will enter mockup branch': !isLoading && !!mockupUrl,
-                              'Will enter placeholder branch': !isLoading && !mockupUrl && !!selectedVariant
-                            });
-                          }
-                          
-                          // Debug logging
-                          if (mockupKey) {
-                            const actualUrl = mockupUrls[mockupKey];
-                            console.log(`🔍 Rendering mockup for key "${mockupKey}":`);
-                            console.log(`  - isLoading: ${isLoading}`);
-                            console.log(`  - hasMockupUrl: ${!!mockupUrl}`);
-                            console.log(`  - mockupUrl: ${mockupUrl || 'NULL'}`);
-                            console.log(`  - actualUrlFromState: ${actualUrl || 'NULL'}`);
-                            console.log(`  - allKeys: ${Object.keys(mockupUrls).join(', ')}`);
-                            console.log(`  - willRenderMockup: ${!isLoading && !!mockupUrl}`);
-                            console.log(`  - willShowPlaceholder: ${!isLoading && !mockupUrl && !!selectedVariant}`);
-                            console.log(`  - Full state:`, mockupUrls);
-                          }
-                          
                           if (isLoading) {
-                            // Show customer photo with loading indicator while Printful mockup is generating
                             return (
-                              <div className="absolute inset-0">
-                                {selectedVariant && (
-                                  <Image
-                                    src={selectedVariant.url}
-                                    alt="Loading preview"
-                                    fill
-                                    className="object-contain opacity-50"
-                                    sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                                  />
-                                )}
-                                <div className="absolute inset-0 flex items-center justify-center bg-white/30">
-                                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600"></div>
-                                </div>
+                              <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600"></div>
                               </div>
                             );
                           } else if (mockupUrl) {
-                            // Show Printful mockup when ready
-                            console.log(`🖼️ RENDERING MOCKUP - Key: ${mockupKey}, URL: ${mockupUrl}`);
-                            console.log(`🖼️ Condition check: isLoading=${isLoading}, mockupUrl=${!!mockupUrl}`);
+                            // Show Printful mockup - image defines its own size
                             return (
-                              <div 
-                                className="absolute inset-0 w-full h-full z-10"
-                                style={{ 
-                                  minHeight: '260px', 
-                                  backgroundColor: 'white',
-                                  position: 'absolute',
-                                  top: 0,
-                                  left: 0,
-                                  right: 0,
-                                  bottom: 0,
-                                  display: 'block',
-                                  visibility: 'visible',
-                                  opacity: 1
-                                }}
-                                data-mockup-key={mockupKey}
-                                data-mockup-url={mockupUrl}
-                              >
-                                {/* Use regular img tag since Next.js Image might have optimization issues */}
-                                <img 
-                                  src={mockupUrl} 
-                                  alt={`${product.name} ${displaySize} mockup`}
-                                  style={{ 
-                                    display: 'block !important',
-                                    position: 'absolute',
-                                    top: 0,
-                                    left: 0,
-                                    width: '100%', 
-                                    height: '100%', 
-                                    objectFit: 'contain',
-                                    zIndex: 1,
-                                    visibility: 'visible',
-                                    opacity: 1,
-                                    pointerEvents: 'auto'
-                                  }}
-                                  onLoad={(e) => {
-                                    const img = e.currentTarget;
-                                    const container = document.querySelector(`[data-mockup-key="${mockupKey}"]`) as HTMLElement;
-                                    const computedStyle = window.getComputedStyle(img);
-                                    const containerStyle = container ? window.getComputedStyle(container) : null;
-                                    
-                                    console.log(`✅ Mockup image loaded successfully:`, mockupUrl);
-                                    console.log(`✅ Image dimensions:`);
-                                    console.log(`   - width: ${img.width}, height: ${img.height}`);
-                                    console.log(`   - naturalWidth: ${img.naturalWidth}, naturalHeight: ${img.naturalHeight}`);
-                                    console.log(`   - clientWidth: ${img.clientWidth}, clientHeight: ${img.clientHeight}`);
-                                    console.log(`   - offsetWidth: ${img.offsetWidth}, offsetHeight: ${img.offsetHeight}`);
-                                    console.log(`✅ Image CSS:`);
-                                    console.log(`   - display: ${computedStyle.display}`);
-                                    console.log(`   - visibility: ${computedStyle.visibility}`);
-                                    console.log(`   - opacity: ${computedStyle.opacity}`);
-                                    console.log(`   - position: ${computedStyle.position}`);
-                                    console.log(`   - z-index: ${computedStyle.zIndex}`);
-                                    console.log(`✅ Container dimensions:`);
-                                    if (container) {
-                                      console.log(`   - containerWidth: ${container.offsetWidth}, containerHeight: ${container.offsetHeight}`);
-                                      console.log(`   - containerDisplay: ${containerStyle?.display}`);
-                                      console.log(`   - containerVisibility: ${containerStyle?.visibility}`);
-                                      console.log(`   - containerOpacity: ${containerStyle?.opacity}`);
-                                      console.log(`   - containerZIndex: ${containerStyle?.zIndex}`);
-                                      
-                                      // Check parent container
-                                      const parent = container.parentElement;
-                                      if (parent) {
-                                        const parentStyle = window.getComputedStyle(parent);
-                                        console.log(`✅ Parent container:`);
-                                        console.log(`   - parentWidth: ${parent.offsetWidth}, parentHeight: ${parent.offsetHeight}`);
-                                        console.log(`   - parentDisplay: ${parentStyle.display}`);
-                                        console.log(`   - parentOverflow: ${parentStyle.overflow}`);
-                                        console.log(`   - parentZIndex: ${parentStyle.zIndex}`);
-                                      }
-                                    } else {
-                                      console.log(`   - Container not found!`);
-                                    }
-                                  }}
-                                  onError={(e) => {
-                                    console.error(`❌ Failed to load mockup image:`, mockupUrl, e);
-                                    console.error(`❌ Error details:`, e);
-                                  }}
-                                />
-                              </div>
+                              <img
+                                src={mockupUrl}
+                                alt={`${product.name} ${displaySize} mockup`}
+                                style={{ width: '100%', display: 'block' }}
+                              />
                             );
                           } else if (selectedVariant) {
-                            // Show customer photo while waiting for Printful mockup
                             return (
-                              <div className="absolute inset-0 bg-white rounded shadow-lg border-2 border-amber-800/20 flex items-center justify-center p-4">
-                                <Image
-                                  src={selectedVariant.url}
-                                  alt="Preview"
-                                  fill
-                                  className="object-contain rounded"
-                                  sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                                />
-                              </div>
+                              <img
+                                src={selectedVariant.url}
+                                alt="Preview"
+                                style={{ width: '100%', display: 'block' }}
+                              />
                             );
                           } else {
                             return (
-                              <div className="absolute inset-0 flex items-center justify-center">
-                                <div className="text-center text-gray-400">
-                                  <p className="text-sm">Loading preview...</p>
-                                </div>
+                              <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <p className="text-sm text-gray-400">Loading...</p>
                               </div>
                             );
                           }
@@ -752,43 +621,25 @@ export default function CheckoutPage() {
                         const mockupUrl = mockupUrls[product.id];
                         
                         if (isLoading) {
-                          // Show customer photo with loading indicator while Printful mockup is generating
                           return (
-                            <div className="absolute inset-0">
-                              {selectedVariant && (
-                                <Image
-                                  src={selectedVariant.url}
-                                  alt="Loading preview"
-                                  fill
-                                  className="object-contain opacity-50"
-                                  sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                                />
-                              )}
-                              <div className="absolute inset-0 flex items-center justify-center bg-white/30">
-                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600"></div>
-                              </div>
+                            <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600"></div>
                             </div>
                           );
                         } else if (mockupUrl) {
-                          // Show Printful mockup when ready
                           return (
-                            <Image
+                            <img
                               src={mockupUrl}
                               alt={`${product.name} mockup`}
-                              fill
-                              className="object-contain"
-                              sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                              style={{ width: '100%', display: 'block' }}
                             />
                           );
                         } else if (selectedVariant) {
-                          // Show customer photo while waiting for Printful mockup
                           return (
-                            <Image
+                            <img
                               src={selectedVariant.url}
                               alt={`${product.name} preview`}
-                              fill
-                              className="object-cover rounded-lg"
-                              sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                              style={{ width: '100%', display: 'block' }}
                             />
                           );
                         } else {
