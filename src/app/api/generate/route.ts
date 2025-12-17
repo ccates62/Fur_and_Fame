@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generatePortraitVariants, GeneratePortraitParams, isTestMode } from "@/lib/fal-client";
+import { generatePortraitVariants, generatePortraitVariantsForProducts, GeneratePortraitParams, isTestMode } from "@/lib/fal-client";
 import { getOrCreateSession, updateSession, getClientIP, canGenerateFree } from "@/lib/generation-tracker";
 import { validateUserContent } from "@/lib/content-moderation";
 
@@ -98,8 +98,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Check if productIds are provided for product-specific generation
+    const productIds: string[] | undefined = body.productIds;
+    
     // Generate variants for all 3 styles
     const allVariants: Record<string, any[]> = {};
+    const productVariantsMap: Record<string, Record<string, any[]>> = {}; // Store full product mapping
     const generatedStyles: string[] = [];
 
     for (const style of selectedStyles) {
@@ -110,10 +114,30 @@ export async function POST(request: NextRequest) {
         style: style,
         extraNotes: body.extraNotes,
         imageUrl: body.imageUrl,
+        productId: productIds, // Pass productIds if provided
       };
 
-      const variants = await generatePortraitVariants(params);
-      allVariants[style] = variants;
+      // If productIds provided, generate for each product with correct aspect ratios
+      if (productIds && productIds.length > 0) {
+        const productVariants = await generatePortraitVariantsForProducts(params, productIds);
+        
+        // Store full product mapping for checkout page
+        productVariantsMap[style] = productVariants;
+        
+        // Flatten structure for VariantPicker compatibility
+        // Merge all product variants into a single array, but keep productId info
+        // Structure: { style: [variants with productId] }
+        const flattenedVariants: any[] = [];
+        for (const [productId, variants] of Object.entries(productVariants)) {
+          flattenedVariants.push(...variants);
+        }
+        allVariants[style] = flattenedVariants;
+      } else {
+        // Default generation without product context (uses default 3:4 aspect ratio)
+        const variants = await generatePortraitVariants(params);
+        allVariants[style] = variants;
+      }
+      
       generatedStyles.push(style);
     }
 
@@ -132,7 +156,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      variants: allVariants, // Organized by style
+      variants: allVariants, // Organized by style (flattened for VariantPicker)
+      productVariantsMap: Object.keys(productVariantsMap).length > 0 ? productVariantsMap : undefined, // Full product mapping for checkout
       session_id: session.id,
       testMode,
       free_generations_used: isInitialGeneration ? 3 : session.free_generations_used,

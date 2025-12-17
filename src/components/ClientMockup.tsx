@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import { generateMugMockup, generateCanvasMockup, MockupOptions } from "@/lib/client-mockup-generator";
+import { generateMugMockup, generateCanvasMockup, generateBlanketMockup, MockupOptions } from "@/lib/client-mockup-generator";
 
 interface ClientMockupProps {
   imageUrl: string;
-  productType: "mug" | "canvas";
+  productType: "mug" | "canvas" | "blanket";
   placement?: "left" | "right" | "front" | "back";
   className?: string;
   alt?: string;
@@ -57,6 +57,10 @@ export default function ClientMockup({
           console.log(`🖼️ Generating canvas mockup`);
           dataUrl = await generateCanvasMockup(imageUrl);
           console.log(`✅ Canvas mockup generated successfully`);
+        } else if (productType === "blanket") {
+          console.log(`🛏️ Generating blanket mockup`);
+          dataUrl = await generateBlanketMockup(imageUrl);
+          console.log(`✅ Blanket mockup generated successfully`);
         } else {
           throw new Error(`Unsupported product type: ${productType}`);
         }

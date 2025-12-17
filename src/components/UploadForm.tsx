@@ -556,6 +556,17 @@ export default function UploadForm() {
           throw new Error("Please select exactly 3 styles for your free generation");
         }
         
+        // Generate images for all available products to ensure correct aspect ratios
+        // Canvas: canvas-12x12 (1:1) and canvas-16x20 (4:5)
+        // Blankets: blanket-37x57 (3:4), blanket-50x60 (5:6)
+        // This ensures images are generated with correct aspect ratios for each product
+        const productIds = [
+          "canvas-12x12", 
+          "canvas-16x20",
+          "blanket-37x57",
+          "blanket-50x60",
+        ];
+        
         const generateResponse = await fetch("/api/generate", {
           method: "POST",
           headers: {
@@ -571,6 +582,7 @@ export default function UploadForm() {
             fingerprint,
             session_id: sessionId,
             backgroundType,
+            productIds, // Pass product IDs for product-specific aspect ratios
           }),
         });
         
@@ -586,6 +598,10 @@ export default function UploadForm() {
         }
         
         sessionStorage.setItem("portraitVariants", JSON.stringify(generateData.variants));
+        // Store product variants map if available (for product-specific aspect ratios)
+        if (generateData.productVariantsMap) {
+          sessionStorage.setItem("productVariantsMap", JSON.stringify(generateData.productVariantsMap));
+        }
         sessionStorage.setItem("petName", petName);
         sessionStorage.setItem("selectedStyles", JSON.stringify(selectedStyles));
         sessionStorage.setItem("sessionId", generateData.session_id || sessionId || "");

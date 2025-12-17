@@ -33,6 +33,8 @@ export async function generateMockupViaSync(
     return null;
   }
 
+  let syncProductId: number | null = null; // Track sync product ID for cleanup in catch block
+
   try {
     console.log(`🔄 Creating sync product for mockup generation...`);
     
@@ -93,7 +95,7 @@ export async function generateMockupViaSync(
     delete fileObject.preview_url;
     delete fileObject.id;
     
-    // For mugs, try multiple field names that Printful might accept
+    // Add placement fields if specified
     if (placement && !originalFileStructure) {
       // Only add placement fields if we didn't copy from original (original should already have them)
       // Try "area" field first (this is what Printful uses for product templates)
@@ -149,7 +151,7 @@ export async function generateMockupViaSync(
     }
 
     const data = await response.json();
-    const syncProductId = data.result?.id;
+    syncProductId = data.result?.id || null; // Assign to outer variable for catch block access
 
     if (!syncProductId) {
       console.error(`❌ No sync product created`);
@@ -160,8 +162,8 @@ export async function generateMockupViaSync(
     console.log(`✅ Sync product created: ${syncProductId}`);
 
     // Wait a moment for Printful to process the creation
-    console.log(`⏳ Waiting 2 seconds for Printful to process sync product...`);
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    console.log(`⏳ Waiting 5 seconds for Printful to process sync product...`);
+    await new Promise((resolve) => setTimeout(resolve, 5000));
 
     // OPTION 2: Try to update the sync product after creation to set correct placement
     // This might work if Printful allows updating file placement via API
@@ -322,13 +324,14 @@ export async function generateMockupViaSync(
     // Wait for Printful to process the image and generate previews
     // Printful generates previews asynchronously, so we poll until it's ready
     console.log(`⏳ Waiting for Printful to generate preview...`);
-    let previewFile = null;
+    let previewFile: any = null;
     let attempts = 0;
-    const maxAttempts = 4; // Try up to 4 times (12 seconds total)
+    const maxAttempts = 15; // Try up to 15 times (45 seconds total) - increased for reliability
     
     while (attempts < maxAttempts) {
       await new Promise((resolve) => setTimeout(resolve, 3000)); // Wait 3 seconds between checks
       attempts++;
+      console.log(`🔍 Checking for preview (attempt ${attempts}/${maxAttempts})...`);
       
       const getResponse = await fetch(`${PRINTFUL_API_URL}/store/products/${syncProductId}`, {
         method: "GET",
@@ -356,12 +359,65 @@ export async function generateMockupViaSync(
         return null;
       }
       
-      // Printful automatically generates a "preview" type file with the product mockup
-      previewFile = variant?.files?.find((f: any) => f.type === "preview");
+      // Log all files for debugging
+      console.log(`📋 All files on attempt ${attempts}:`, variant?.files?.map((f: any) => ({ 
+        type: f.type, 
+        filename: f.filename, 
+        has_preview_url: !!f.preview_url,
+        preview_url: f.preview_url || null,
+        url: f.url || null,
+        hash: f.hash || null,
+        all_keys: Object.keys(f)
+      })));
       
-      if (previewFile?.preview_url) {
+      // Printful automatically generates a preview - prioritize the "preview" type file
+      // which is the actual product mockup, not the uploaded image preview
+      const previewTypeFile = variant?.files?.find((f: any) => f.type === "preview" && f.preview_url);
+      const defaultTypeFile = variant?.files?.find((f: any) => f.type === "default" && f.preview_url);
+      
+      console.log(`🔍 File search results:`);
+      console.log(`   - Preview type file found: ${!!previewTypeFile}`);
+      console.log(`   - Default type file found: ${!!defaultTypeFile}`);
+      if (previewTypeFile) {
+        console.log(`   - Preview type file URL: ${previewTypeFile.preview_url?.substring(0, 60)}...`);
+      }
+      if (defaultTypeFile) {
+        console.log(`   - Default type file URL: ${defaultTypeFile.preview_url?.substring(0, 60)}...`);
+      }
+      
+      // Use preview type file if available (this is the actual product mockup)
+      // IMPORTANT: Wait for preview type file, don't accept default type file too early
+      if (previewTypeFile?.preview_url) {
+        previewFile = previewTypeFile;
         console.log(`✅ Preview URL available after ${attempts} attempt(s)`);
+        console.log(`📋 Preview file type: ${previewFile.type}, filename: ${previewFile.filename || 'N/A'}`);
+        console.log(`📋 Preview URL: ${previewFile.preview_url?.substring(0, 80)}...`);
+        console.log(`✅ Using PREVIEW type file - this is the correct product mockup!`);
         break;
+      }
+      
+      // If we have a default type file but no preview type file yet, continue polling
+      // Don't accept default type file until we've exhausted all attempts
+      if (defaultTypeFile?.preview_url && attempts < maxAttempts - 1) {
+        console.log(`⏳ Preview type file not ready yet, but default type file is available. Continuing to wait for preview type file... (attempt ${attempts}/${maxAttempts})`);
+        // Continue polling - don't break yet
+      } else if (defaultTypeFile?.preview_url && attempts >= maxAttempts - 1) {
+        // Last attempt - fallback to default type file if preview type file still not available
+        console.warn(`⚠️ Preview type file not found after ${attempts} attempts, falling back to default type file`);
+        console.warn(`⚠️ This may show the uploaded image instead of the product mockup`);
+        previewFile = defaultTypeFile;
+        console.log(`📋 Using default type file URL: ${previewFile.preview_url?.substring(0, 80)}...`);
+        break;
+      }
+      
+      // Also check if file has hash (we can construct URL from hash)
+      if (!previewFile) {
+        const fileWithHash = variant?.files?.find((f: any) => f.hash && f.type === "default");
+        if (fileWithHash?.hash) {
+          console.log(`📋 Found file with hash, will construct preview URL from hash`);
+          previewFile = fileWithHash;
+          break;
+        }
       }
       
       if (attempts < maxAttempts) {
@@ -382,9 +438,44 @@ export async function generateMockupViaSync(
       if (finalCheck.ok) {
         const finalData = await finalCheck.json();
         const finalVariant = finalData.result?.sync_variants?.[0];
-        console.warn(`Available files:`, finalVariant?.files?.map((f: any) => ({ type: f.type, filename: f.filename, has_preview_url: !!f.preview_url })));
+        console.warn(`Available files:`, finalVariant?.files?.map((f: any) => ({ 
+          type: f.type, 
+          filename: f.filename, 
+          has_preview_url: !!f.preview_url,
+          preview_url: f.preview_url || null,
+          url: f.url || null,
+          hash: f.hash || null
+        })));
+        
+        // Try one more time to find a file with preview_url - prioritize preview type
+        let fileWithPreview = finalVariant?.files?.find((f: any) => f.type === "preview" && f.preview_url);
+        if (!fileWithPreview) {
+          fileWithPreview = finalVariant?.files?.find((f: any) => f.preview_url);
+        }
+        if (fileWithPreview) {
+          console.log(`✅ Found file with preview_url in final check! Type: ${fileWithPreview.type}`);
+          previewFile = fileWithPreview;
+          // Continue to get the mockup URL below instead of returning null
+        } else {
+          // Still no preview - clean up and return
+          console.log(`🗑️ Deleting temporary sync product ${syncProductId} (no preview found)...`);
+          try {
+            await deleteSyncProduct(syncProductId);
+          } catch (deleteError) {
+            console.warn(`⚠️ Failed to delete sync product ${syncProductId} after error`);
+          }
+          return null;
+        }
+      } else {
+        // Final check failed - clean up and return
+        console.log(`🗑️ Deleting temporary sync product ${syncProductId} (final check failed)...`);
+        try {
+          await deleteSyncProduct(syncProductId);
+        } catch (deleteError) {
+          console.warn(`⚠️ Failed to delete sync product ${syncProductId} after error`);
+        }
+        return null;
       }
-      return null;
     }
 
     // Get the mockup URL - Printful provides preview_url in the file object
@@ -416,9 +507,25 @@ export async function generateMockupViaSync(
     console.warn(`⚠️ Preview file found but no URL available`);
     console.warn(`Preview file keys:`, Object.keys(previewFile));
     console.warn(`Preview file:`, JSON.stringify(previewFile, null, 2).substring(0, 500));
+    // Clean up sync product even when URL is not available
+    console.log(`🗑️ Deleting temporary sync product ${syncProductId} (no URL available)...`);
+    try {
+      await deleteSyncProduct(syncProductId);
+    } catch (deleteError) {
+      console.warn(`⚠️ Failed to delete sync product ${syncProductId} after error`);
+    }
     return null;
   } catch (error: any) {
     console.error("Error generating mockup via sync:", error);
+    // Clean up sync product on exception
+    if (syncProductId) {
+      console.log(`🗑️ Deleting temporary sync product ${syncProductId} (exception occurred)...`);
+      try {
+        await deleteSyncProduct(syncProductId);
+      } catch (deleteError) {
+        console.warn(`⚠️ Failed to delete sync product ${syncProductId} after exception`);
+      }
+    }
     return null;
   }
 }

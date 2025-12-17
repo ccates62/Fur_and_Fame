@@ -239,3 +239,4 @@ Your Printful integration is now set up! 🎉
 
 **Last Updated:** Ready to use! 🚀
 
+

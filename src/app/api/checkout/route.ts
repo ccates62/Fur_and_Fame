@@ -11,7 +11,15 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
  */
 export async function POST(request: NextRequest) {
   try {
-    const { product_id, product_name, price, variant_url, variant_id } = await request.json();
+    const { 
+      product_id, 
+      product_name, 
+      price, 
+      variant_url, 
+      variant_id,
+      shipping_address, // Optional: shipping address for shipping calculation
+      shipping_cost, // Optional: pre-calculated shipping cost
+    } = await request.json();
 
     if (!product_id || !product_name || !price || !variant_url) {
       return NextResponse.json(
@@ -25,34 +33,7 @@ export async function POST(request: NextRequest) {
     // Build line items based on product
     const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
 
-    if (product_id === "bundle") {
-      // Bundle includes 12x12 Canvas + Mug
-      lineItems.push(
-        {
-          price_data: {
-            currency: "usd",
-            product_data: {
-              name: "12x12 Canvas Print",
-              description: "Premium quality canvas print with your pet's portrait",
-            },
-            unit_amount: 5900, // $59 in cents
-          },
-          quantity: 1,
-        },
-        {
-          price_data: {
-            currency: "usd",
-            product_data: {
-              name: "Mug",
-              description: "Ceramic mug with your pet's portrait",
-            },
-            unit_amount: 1900, // $19 in cents
-          },
-          quantity: 1,
-        }
-      );
-    } else {
-      // Single product - include portrait image in Stripe product
+    // Single product - include portrait image in Stripe product
       const productDescription = product_id === "blanket" 
         ? "Cozy fleece throw blanket with your pet's AI-generated portrait"
         : product_id === "t-shirt"
@@ -75,6 +56,21 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Add shipping as a line item if provided
+    if (shipping_cost && shipping_cost > 0) {
+      lineItems.push({
+        price_data: {
+          currency: "usd",
+          product_data: {
+            name: "Shipping",
+            description: "Standard shipping",
+          },
+          unit_amount: Math.round(shipping_cost * 100), // Convert to cents
+        },
+        quantity: 1,
+      });
+    }
+
     // Create Stripe checkout session
     const checkoutSession = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
@@ -82,6 +78,10 @@ export async function POST(request: NextRequest) {
       mode: "payment",
       shipping_address_collection: {
         allowed_countries: ["US", "CA", "GB", "AU"], // Add more countries as needed
+      },
+      // Enable Stripe Tax for automatic tax calculation
+      automatic_tax: {
+        enabled: true,
       },
       success_url: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/checkout?cancelled=true`,
@@ -91,6 +91,7 @@ export async function POST(request: NextRequest) {
         product_name: product_name,
         variant_url: variant_url,
         variant_id: variant_id || "",
+        shipping_cost: shipping_cost ? shipping_cost.toString() : "",
       },
     });
 

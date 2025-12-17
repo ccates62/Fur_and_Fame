@@ -85,27 +85,7 @@ export async function POST(request: NextRequest) {
             external_id: orderId, // Link to Stripe order
           };
 
-          // Handle bundle products (canvas + mug)
-          if (productId === "bundle") {
-            // Bundle includes canvas-12x12 and mug
-            const canvasMap = PRINTFUL_PRODUCT_MAP["canvas-12x12"];
-            const mugMap = PRINTFUL_PRODUCT_MAP["mug"];
-            
-            if (canvasMap && mugMap) {
-              printfulOrderData.items = [
-                {
-                  variant_id: canvasMap.variantId,
-                  quantity: 1,
-                  files: [{ type: "default", url: variantUrl }],
-                },
-                {
-                  variant_id: mugMap.variantId,
-                  quantity: 1,
-                  files: [{ type: "default", url: variantUrl }],
-                },
-              ];
-            }
-          }
+          // All products are handled the same way now (no bundles)
 
           // Create Printful order
           const printfulResult = await createPrintfulOrder(printfulOrderData);

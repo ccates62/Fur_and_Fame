@@ -17,6 +17,37 @@ const TEST_MODE =
    process.env.NODE_ENV === "development" || 
    !FAL_API_KEY);
 
+/**
+ * Product aspect ratio mapping for optimal print quality
+ * Maps product IDs to their optimal aspect ratios to prevent distortion
+ */
+export const PRODUCT_ASPECT_RATIOS: Record<string, string> = {
+  // Canvas products
+  "canvas-12x12": "1:1",      // Square canvas
+  "canvas-16x20": "4:5",       // Portrait canvas (16:20 = 4:5)
+  
+  // Blanket products (Sublimated Sherpa Blanket) - Vertical/Portrait orientation
+  "blanket-37x57": "3:4",      // Small blanket (37×57, portrait/vertical - 3:4 ratio)
+  "blanket-50x60": "5:6",      // Medium blanket (50×60, portrait/vertical - 5:6 ratio)
+  "blanket-60x80": "3:4",      // Large blanket (60×80, portrait/vertical - 3:4 ratio)
+  
+  // Default for unknown products or general use
+  "default": "3:4",            // Portrait orientation (most common)
+};
+
+/**
+ * Get aspect ratio for a product ID
+ */
+export function getAspectRatioForProduct(productId?: string | string[]): string {
+  if (!productId) {
+    return PRODUCT_ASPECT_RATIOS["default"];
+  }
+  
+  // If array, use first product's aspect ratio (or could generate multiple)
+  const id = Array.isArray(productId) ? productId[0] : productId;
+  return PRODUCT_ASPECT_RATIOS[id] || PRODUCT_ASPECT_RATIOS["default"];
+}
+
 export interface GeneratePortraitParams {
   petName: string;
   breed: string;
@@ -28,12 +59,15 @@ export interface GeneratePortraitParams {
   personSex?: string; // For people portraits
   personEthnicity?: string; // For people portraits
   personHairColor?: string; // For people portraits
+  productId?: string | string[]; // Product ID(s) to generate correct aspect ratio for
 }
 
 export interface PortraitVariant {
   id: string;
   url: string;
   prompt: string;
+  productId?: string; // Product ID this variant was generated for
+  aspectRatio?: string; // Aspect ratio used for this variant
 }
 
 /**
@@ -148,9 +182,31 @@ function generatePlaceholderVariants(
   // These are free placeholder images that change based on seed
   const baseUrl = "https://picsum.photos/seed";
   
+  // Determine aspect ratio for placeholders
+  const aspectRatio = getAspectRatioForProduct(params.productId);
+  const productId = Array.isArray(params.productId) ? params.productId[0] : params.productId;
+  
+  // Calculate placeholder dimensions based on aspect ratio
+  let width = 800;
+  let height = 1000;
+  if (aspectRatio === "1:1") {
+    width = 1000;
+    height = 1000;
+  } else if (aspectRatio === "4:5") {
+    width = 800;
+    height = 1000;
+  } else if (aspectRatio === "5:6") {
+    width = 833;
+    height = 1000;
+  } else {
+    // 3:4 or default
+    width = 750;
+    height = 1000;
+  }
+  
   const variants: PortraitVariant[] = [];
   for (let i = 1; i <= numVariants; i++) {
-    const seed = Math.abs(hashCode(`${params.petName}-${params.breed}-${i}`));
+    const seed = Math.abs(hashCode(`${params.petName}-${params.breed}-${i}-${productId || 'default'}`));
     let variantPrompt = prompt;
     if (i === 2) {
       variantPrompt = `${prompt} slightly different angle`;
@@ -160,8 +216,10 @@ function generatePlaceholderVariants(
     
     variants.push({
       id: `variant-${i}`,
-      url: `${baseUrl}/${seed}/800/1000`,
+      url: `${baseUrl}/${seed}/${width}/${height}`,
       prompt: variantPrompt,
+      productId: productId,
+      aspectRatio: aspectRatio,
     });
   }
   
@@ -245,11 +303,14 @@ async function generateSingleVariant(
     // Get negative prompt if needed
     const negativePrompt = getNegativePrompt(params);
     
+    // Determine aspect ratio based on product
+    const aspectRatio = getAspectRatioForProduct(params.productId);
+    
     const requestBody: any = {
       prompt: variantPrompt,
       image_url: referenceImageUrl, // Reference image
       num_images: 1,
-      aspect_ratio: "3:4",
+      aspect_ratio: aspectRatio, // Use product-specific aspect ratio
       output_format: "png",
       guidance_scale: 7.5,
       num_inference_steps: 28,
@@ -302,15 +363,55 @@ async function generateSingleVariant(
       throw new Error("No image URL returned from fal.ai. This may be due to insufficient account balance or API configuration issues. Check your fal.ai dashboard for account status.");
     }
 
+    // Determine product ID for this variant (aspectRatio already calculated above)
+    const productId = Array.isArray(params.productId) ? params.productId[0] : params.productId;
+    
     return {
       id: `variant-${variantNumber}`,
       url: generatedImageUrl,
       prompt: variantPrompt,
+      productId: productId,
+      aspectRatio: aspectRatio, // Reuse aspectRatio from above
     };
   } catch (error) {
     console.error(`Error generating variant ${variantNumber}:`, error);
     throw error;
   }
+}
+
+/**
+ * Generate portrait variants for multiple products
+ * Each product gets its own set of variants with correct aspect ratios
+ * 
+ * @param params Base generation parameters
+ * @param productIds Array of product IDs to generate for
+ * @returns Map of productId -> PortraitVariant[]
+ */
+export async function generatePortraitVariantsForProducts(
+  params: GeneratePortraitParams,
+  productIds: string[]
+): Promise<Record<string, PortraitVariant[]>> {
+  const results: Record<string, PortraitVariant[]> = {};
+  
+  // Generate variants for each product with its specific aspect ratio
+  const generationPromises = productIds.map(async (productId) => {
+    const productParams: GeneratePortraitParams = {
+      ...params,
+      productId: productId,
+    };
+    
+    const variants = await generatePortraitVariants(productParams);
+    return { productId, variants };
+  });
+  
+  const allResults = await Promise.all(generationPromises);
+  
+  // Organize results by product ID
+  for (const { productId, variants } of allResults) {
+    results[productId] = variants;
+  }
+  
+  return results;
 }
 
 /**

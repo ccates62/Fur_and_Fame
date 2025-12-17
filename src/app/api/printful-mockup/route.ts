@@ -27,15 +27,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Mugs use client-side mockup generator (no API call needed)
-    if (product_id === "mug") {
-      return NextResponse.json({
-        success: true,
-        mockup_url: image_url, // Client-side generator will handle this
-        method: "client-side",
-        message: "Mug uses client-side mockup generator",
-      });
-    }
+    // All products use Printful API - no client-side fallback
 
     // Direct URL method doesn't work reliably - skip it and use API method
     // Always use API method for reliable mockup generation
@@ -67,14 +59,14 @@ export async function POST(request: NextRequest) {
     }
     
     if (!result) {
-      // If API fails (rate limit, placement error, etc.), return the original image as fallback
-      console.warn(`⚠️ Failed to generate Printful mockup for ${product_id}, returning original image`);
+      // If API fails, return error - don't use fallback
+      console.error(`❌ Failed to generate Printful mockup for ${product_id}`);
       return NextResponse.json({
-        success: true,
-        mockup_url: image_url, // Fallback to original image
-        method: "fallback",
-        warning: "Printful mockup generation failed. Showing original image. If rate limited, wait 30-60 seconds and refresh. For new stores, limit is 2 requests/minute.",
-      });
+        success: false,
+        error: "Failed to generate mockup",
+        message: "Printful mockup generation failed. Please try again. If rate limited, wait 30-60 seconds and refresh. For new stores, limit is 2 requests/minute.",
+        product_id: product_id,
+      }, { status: 500 });
     }
     
     console.log(`✅ Mockup task created for ${product_id}, task_key: ${result}`);
@@ -90,26 +82,11 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error("Error generating Printful mockup:", error);
-    try {
-      const { product_id, image_url } = await request.json();
-      console.error("Product ID:", product_id);
-      console.error("Image URL:", image_url);
-      // Return fallback instead of 500 error
-      return NextResponse.json({
-        success: true,
-        mockup_url: image_url || "", // Fallback to original image
-        method: "fallback",
-        warning: "Printful mockup generation failed, showing original image",
-        error: error.message,
-      });
-    } catch (parseError) {
-      // If we can't parse the request, return a generic error
-      return NextResponse.json({
-        success: false,
-        error: "Failed to process request",
-        message: error.message,
-      }, { status: 500 });
-    }
+    return NextResponse.json({
+      success: false,
+      error: "Failed to generate mockup",
+      message: error.message || "An error occurred while generating the mockup. Please try again.",
+    }, { status: 500 });
   }
 }
 

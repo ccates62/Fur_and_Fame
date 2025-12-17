@@ -22,9 +22,14 @@ export const PRINTFUL_PRODUCT_MAP: Record<string, { productId: number; variantId
     productId: 407686920, // Same product, 16x20 size variant
     variantId: "693f56031300b7", // 16x20 variant external_id from Printful (hex string)
   },
-  "blanket": {
-    productId: 99, // Throw Blanket - UPDATE with your actual Printful product ID
-    variantId: 1, // UPDATE with your actual Printful variant ID
+  // Blanket products (Sublimated Sherpa Blanket)
+  "blanket-37x57": {
+    productId: 408134929, // Sherpa blanket product ID
+    variantId: "69421576454962", // 37×57 variant external_id from Printful
+  },
+  "blanket-50x60": {
+    productId: 408134929, // Sherpa blanket product ID
+    variantId: "69421576454a03", // 50×60 variant external_id from Printful
   },
   "t-shirt": {
     productId: 71, // T-Shirt - UPDATE with your actual Printful product ID
@@ -199,7 +204,7 @@ export async function generatePrintfulMockup(
     return null;
   }
 
-  // Note: Canvas and mugs both use "position" field instead of "placement"
+  // Note: Canvas uses "position" field instead of "placement"
   // This is handled in the files array construction below
 
   try {
@@ -212,127 +217,23 @@ export async function generatePrintfulMockup(
       return null;
     }
     
-    // For mugs, try to use the existing product's preview URL structure
-    // Even though it's for the placeholder, it shows us the correct placement/angle
-    // We'll use it as a reference to ensure our sync product matches
-    
-    // For mugs, we need to generate a mockup with the customer's image
-    // while preserving the placement from the original product configuration
-    
-    // For mugs, use the existing store product method to preserve configured placement
-    // This temporarily updates your store product with the customer's image, generates mockup, then restores it
-    if (productId === "mug") {
-      console.log(`🍵 Using store product method for mug (preserves your configured placement)...`);
-      const { generateMockupViaStoreProduct } = await import("./printful-mockup-via-store-product");
-      const storeMockupUrl = await generateMockupViaStoreProduct(
-        productMap.productId,
-        productMap.variantId,
-        imageUrl
-      );
-      if (storeMockupUrl) {
-        console.log(`✅ Got mockup via store product method for ${productId}`);
-        return `sync:${storeMockupUrl}`;
-      }
-      console.warn(`⚠️ Store product method failed, falling back to sync method`);
-    }
-    
-    // Use sync product method for canvas (or if store product method failed for mug)
-    const useSyncMethod = productId.startsWith("canvas") || productId === "mug";
+    // Use sync product method for all products (canvas, blanket, etc.)
+    // This is the most reliable method as it uses your configured product settings
+    const useSyncMethod = productId.startsWith("canvas") || productId.startsWith("blanket");
     
     if (useSyncMethod) {
       console.log(`🔄 Using sync product method for ${productId}...`);
       const { generateMockupViaSync } = await import("./printful-mockup-sync");
       
-      // For mugs, try to detect placement from original product filename
-      let detectedPlacement: string | undefined = undefined;
-      if (productId === "mug") {
-        try {
-          const productResponse = await fetch(`${PRINTFUL_API_URL}/store/products/${productMap.productId}`, {
-            method: "GET",
-            headers: {
-              "Authorization": `Bearer ${PRINTFUL_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-          });
-          
-          if (productResponse.ok) {
-            const productData = await productResponse.json();
-            const syncVariants = productData.result?.sync_variants || [];
-            const variantIdHex = typeof productMap.variantId === 'string' 
-              ? productMap.variantId.toLowerCase() 
-              : productMap.variantId.toString(16).toLowerCase();
-            
-            const variant = syncVariants.find((v: any) => {
-              if (v.external_id && v.external_id.toLowerCase() === variantIdHex) return true;
-              if (typeof productMap.variantId === 'number' && v.id === productMap.variantId) return true;
-              return false;
-            });
-            
-            const previewFile = variant?.files?.find((f: any) => f.type === "preview" && f.filename);
-            if (previewFile?.filename) {
-              const filename = previewFile.filename.toLowerCase();
-              if (filename.includes("right")) detectedPlacement = "right";
-              else if (filename.includes("left")) detectedPlacement = "left";
-              else if (filename.includes("back")) detectedPlacement = "back";
-              else if (filename.includes("front")) detectedPlacement = "front";
-              
-              if (detectedPlacement) {
-                console.log(`📍 Detected placement "${detectedPlacement}" from original product - will try to preserve in sync product`);
-              }
-            }
-          }
-        } catch (error) {
-          console.warn("⚠️ Could not detect placement from original product");
-        }
-      }
+      // Use catalog variant ID for sync method
+      const variantIdToUse = catalogIds.catalogVariantId;
       
-      // CRITICAL: Try using store variant ID instead of catalog variant ID
-      // Store variant IDs reference the configured product, which should preserve placement
-      // Catalog variant IDs use template defaults
-      let variantIdToUse = catalogIds.catalogVariantId;
-      
-      // For mugs, try to get the store variant ID from the original product
-      if (productId === "mug") {
-        try {
-          const productResponse = await fetch(`${PRINTFUL_API_URL}/store/products/${productMap.productId}`, {
-            method: "GET",
-            headers: {
-              "Authorization": `Bearer ${PRINTFUL_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-          });
-          
-          if (productResponse.ok) {
-            const productData = await productResponse.json();
-            const syncVariants = productData.result?.sync_variants || [];
-            const variantIdHex = typeof productMap.variantId === 'string' 
-              ? productMap.variantId.toLowerCase() 
-              : productMap.variantId.toString(16).toLowerCase();
-            
-            const variant = syncVariants.find((v: any) => {
-              if (v.external_id && v.external_id.toLowerCase() === variantIdHex) return true;
-              if (typeof productMap.variantId === 'number' && v.id === productMap.variantId) return true;
-              return false;
-            });
-            
-            // Try using the store variant's variant_id (this references the configured product)
-            if (variant?.variant_id) {
-              console.log(`🔄 Using store variant_id ${variant.variant_id} instead of catalog variant_id ${catalogIds.catalogVariantId}`);
-              console.log(`💡 This should reference your configured product with correct placement`);
-              variantIdToUse = variant.variant_id;
-            }
-          }
-        } catch (error) {
-          console.warn("⚠️ Could not get store variant ID, using catalog variant ID");
-        }
-      }
-      
-      // Pass detected placement so sync method can try to replicate original product structure
+      // Pass undefined placement - sync method will use product defaults
       const syncMockupUrl = await generateMockupViaSync(
         productMap.productId,
-        variantIdToUse, // Use store variant ID if available, otherwise catalog variant ID
+        variantIdToUse,
         imageUrl,
-        detectedPlacement
+        undefined
       );
       if (syncMockupUrl) {
         console.log(`✅ Got mockup via sync method for ${productId}`);
@@ -343,23 +244,9 @@ export async function generatePrintfulMockup(
 
     // Build files array - some products need "position" field, others need "placement"
     const isCanvas = productId.startsWith("canvas");
-    const isMug = productId === "mug";
     
-    // For mugs, try multiple field names that Printful might accept
-    // The mockup generator API might accept "area", "placement", or "position"
     let files: any[];
-    if (isMug) {
-      // Try all possible field names for mug placement
-      files = [
-        {
-          area: "front", // Primary: "area" field (used in product templates)
-          placement: "front", // Fallback: "placement" field
-          position: 0, // Fallback: numeric position (0 = front)
-          image_url: imageUrl,
-        },
-      ];
-      console.log(`🍵 Using mug-specific file structure with area/placement/position fields`);
-    } else if (isCanvas) {
+    if (isCanvas) {
       files = [
         {
           position: "default", // Canvas uses "position" field
@@ -528,6 +415,74 @@ export interface PrintfulOrderData {
   };
   items: PrintfulOrderItem[];
   external_id?: string; // Stripe order ID for tracking
+}
+
+/**
+ * Get shipping rates from Printful
+ * @param recipient Shipping address
+ * @param items Array of items with product_id and quantity
+ * @returns Array of shipping options with rates
+ */
+export async function getPrintfulShippingRates(
+  recipient: {
+    address1: string;
+    city: string;
+    state_code: string;
+    country_code: string;
+    zip: string;
+    address2?: string;
+  },
+  items: Array<{ product_id: string; quantity: number }>
+): Promise<Array<{
+  id: string;
+  name: string;
+  rate: number;
+  currency: string;
+  minDeliveryDays: number;
+  maxDeliveryDays: number;
+}>> {
+  if (!PRINTFUL_API_KEY) {
+    console.warn("⚠️ PRINTFUL_API_KEY not configured - cannot get shipping rates");
+    return [];
+  }
+
+  try {
+    // Convert product IDs to Printful variant IDs
+    const printfulItems = items.map(item => {
+      const productMap = PRINTFUL_PRODUCT_MAP[item.product_id];
+      if (!productMap) {
+        throw new Error(`Product ${item.product_id} not found in Printful product map`);
+      }
+      return {
+        variant_id: productMap.variantId,
+        quantity: item.quantity || 1,
+      };
+    });
+
+    const response = await fetch(`${PRINTFUL_API_URL}/shipping/rates`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${PRINTFUL_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        recipient,
+        items: printfulItems,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Printful shipping rates API error:", response.status, errorText);
+      return [];
+    }
+
+    const data = await response.json();
+    return data.result || [];
+  } catch (error: any) {
+    console.error("Error fetching shipping rates:", error);
+    return [];
+  }
 }
 
 export async function createPrintfulOrder(

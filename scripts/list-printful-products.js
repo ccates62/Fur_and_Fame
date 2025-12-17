@@ -82,18 +82,45 @@ async function fetchPrintfulProducts() {
 
         if (detailResponse.ok) {
           const detailData = await detailResponse.json();
-          const variants = detailData.result?.variants || [];
+          const productData = detailData.result;
+          
+          // Try sync_variants first (most common for store products)
+          const syncVariants = productData?.sync_variants || [];
+          const variants = productData?.variants || [];
 
-          if (variants.length > 0) {
-            console.log(`   Variants:`);
-            variants.forEach((variant, index) => {
-              const variantName = variant.name || `Variant ${index + 1}`;
+          // Combine both sources
+          const allVariants = syncVariants.length > 0 ? syncVariants : variants;
+
+          if (allVariants.length > 0) {
+            console.log(`   Variants (${allVariants.length}):`);
+            allVariants.forEach((variant, index) => {
+              const variantName = variant.name || variant.product?.name || `Variant ${index + 1}`;
               const variantId = variant.id;
-              const size = variant.size || '';
-              const color = variant.color || '';
+              const externalId = variant.external_id || variant.product?.external_id || '';
+              const size = variant.size || variant.product?.size || '';
+              const color = variant.color || variant.product?.color || '';
               
-              console.log(`     • ${variantName}${size ? ` (${size})` : ''}${color ? ` - ${color}` : ''}`);
-              console.log(`       Variant ID: ${variantId}`);
+              console.log(`     ${index + 1}. ${variantName}${size ? ` (${size})` : ''}${color ? ` - ${color}` : ''}`);
+              console.log(`        Variant ID: ${variantId}`);
+              if (externalId) {
+                console.log(`        External ID: ${externalId} ⭐ (Use this for variantId in code)`);
+              }
+            });
+            
+            // Generate code snippet
+            console.log(`\n   💻 Code snippet for PRINTFUL_PRODUCT_MAP:`);
+            allVariants.forEach((variant) => {
+              const externalId = variant.external_id || variant.product?.external_id || '';
+              const size = variant.size || variant.product?.size || '';
+              if (externalId && size) {
+                // Generate product key from size (e.g., "37×57" -> "blanket-37x57")
+                const sizeKey = size.replace(/[×″]/g, 'x').toLowerCase();
+                const productKey = productName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+                console.log(`     "${productKey}-${sizeKey}": {`);
+                console.log(`       productId: ${productId},`);
+                console.log(`       variantId: "${externalId}",`);
+                console.log(`     },`);
+              }
             });
           } else {
             console.log(`   ⚠️  No variants found for this product`);
@@ -120,4 +147,5 @@ async function fetchPrintfulProducts() {
 
 // Run the script
 fetchPrintfulProducts();
+
 

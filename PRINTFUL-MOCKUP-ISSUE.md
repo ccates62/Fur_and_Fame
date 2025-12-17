@@ -99,3 +99,4 @@ The application falls back to showing the original pet portrait image when mocku
 2. Consider using Printful's Custom Mockup Maker or Placeit integration as an alternative
 3. Pre-generate mockup templates and overlay customer images client-side
 
+

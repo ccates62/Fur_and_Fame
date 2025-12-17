@@ -60,3 +60,4 @@ Orders will now automatically go to Printful when customers buy!
 
 **Need more details?** See `PRINTFUL-SIMPLE-SETUP.md`
 
+

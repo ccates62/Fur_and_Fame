@@ -84,3 +84,4 @@ Update these IDs in `src/lib/printful-client.ts`:
 - See full guide: `PRINTFUL-SETUP-STEPS.md`
 - [Printful API Docs](https://developers.printful.com/)
 
+

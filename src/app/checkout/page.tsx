@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
+import ProductDetailModal from "@/components/ProductDetailModal";
 
 interface Product {
   id: string;
@@ -30,17 +31,20 @@ const products: Product[] = [
       { size: "16x20", price: 89, variantKey: "canvas-16x20" },
     ],
   },
-  // NOTE: Other products (blanket, t-shirt, poster) are commented out
-  // because they don't exist in your Printful store yet.
-  // Uncomment and update product IDs in PRINTFUL_PRODUCT_MAP once you set them up in Printful.
-  /*
   {
     id: "blanket",
-    name: "Throw Blanket",
-    description: "Cozy fleece blanket with your pet's portrait, perfect for snuggling",
-    price: 49,
+    name: "Sublimated Sherpa Blanket",
+    description: "Plush sherpa blanket with your pet's portrait, perfect for snuggling",
+    price: 70, // Default price (50×60)
     icon: "🛏️",
+    sizes: [
+      { size: "37×57", price: 55, variantKey: "blanket-37x57" },
+      { size: "50×60", price: 70, variantKey: "blanket-50x60" },
+    ],
   },
+  // NOTE: Other products (t-shirt, poster) are commented out
+  // because they don't exist in your Printful store yet.
+  /*
   {
     id: "t-shirt",
     name: "T-Shirt",
@@ -62,11 +66,36 @@ export default function CheckoutPage() {
   const router = useRouter();
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedVariant, setSelectedVariant] = useState<any>(null);
+  const [productVariantsMap, setProductVariantsMap] = useState<Record<string, Record<string, any[]>> | null>(null);
   const [selectedSize, setSelectedSize] = useState<string | null>(null); // Add size selection for canvas
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mockupUrls, setMockupUrls] = useState<Record<string, string>>({});
   const [loadingMockups, setLoadingMockups] = useState<Record<string, boolean>>({});
+  const fetchingRef = useRef<Set<string>>(new Set()); // Track ongoing fetches to prevent duplicates
+  
+  // Product detail modal state
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedProductForModal, setSelectedProductForModal] = useState<Product | null>(null);
+  
+  // Debug: Log state changes
+  useEffect(() => {
+    console.log(`🔄 mockupUrls state changed:`, mockupUrls);
+    console.log(`🔄 mockupUrls keys:`, Object.keys(mockupUrls));
+    Object.entries(mockupUrls).forEach(([key, url]) => {
+      console.log(`🔄   - ${key}: ${url ? url.substring(0, 50) + '...' : 'NULL'}`);
+    });
+  }, [mockupUrls]);
+  const [shippingAddress, setShippingAddress] = useState({
+    address1: "",
+    city: "",
+    state_code: "",
+    country_code: "US",
+    zip: "",
+  });
+  const [shippingCost, setShippingCost] = useState<number | null>(null);
+  const [shippingOptions, setShippingOptions] = useState<any[]>([]);
+  const [loadingShipping, setLoadingShipping] = useState(false);
 
   useEffect(() => {
     // Load selected variant from sessionStorage
@@ -77,11 +106,18 @@ export default function CheckoutPage() {
           const parsed = JSON.parse(storedVariant);
           setSelectedVariant(parsed.variant || parsed);
           
-          // Auto-select first canvas size so mockup shows immediately
-          const canvasProduct = products.find(p => p.id === "canvas");
-          if (canvasProduct?.sizes && canvasProduct.sizes.length > 0) {
-            setSelectedSize(canvasProduct.sizes[0].size);
+          // Load product variants map if available (for product-specific aspect ratios)
+          const storedProductMap = sessionStorage.getItem("productVariantsMap");
+          if (storedProductMap) {
+            try {
+              const productMap = JSON.parse(storedProductMap);
+              setProductVariantsMap(productMap);
+            } catch (e) {
+              console.error("Error parsing product variants map:", e);
+            }
           }
+          
+          // Don't auto-select any product - let user choose
         } catch (e) {
           console.error("Error parsing selected variant:", e);
           router.push("/variants");
@@ -93,23 +129,137 @@ export default function CheckoutPage() {
     }
   }, [router]);
 
-  // Fetch Printful mockups for all products when variant is loaded
+  // Fetch Printful mockups automatically for ALL products when variant is available
+  // This will load mockups for all products/sizes on page load, not just the selected one
   useEffect(() => {
-    if (!selectedVariant?.url) return;
+    if (!selectedVariant?.url) {
+      console.log("⏸️ Mockup fetch skipped: No variant URL available");
+      return;
+    }
+    
+    console.log("🖼️ Starting Printful mockup fetch for all products...", {
+      variantUrl: selectedVariant.url?.substring(0, 50) + "..."
+    });
 
-    const fetchMockups = async () => {
-      const newMockupUrls: Record<string, string> = {};
-      const newLoadingMockups: Record<string, boolean> = {};
+    // Fetch mockups for all products in parallel
+    const fetchAllMockups = async () => {
+      // Collect all mockup fetch promises
+      const mockupPromises: Promise<void>[] = [];
 
-      // Fetch mockups for each product
       for (const product of products) {
-        // For canvas, fetch mockups for each size
-        if (product.id === "canvas" && product.sizes) {
+        if (product.sizes && product.sizes.length > 0) {
+          // Fetch mockup for each size
           for (const sizeOption of product.sizes) {
             const productIdForMockup = sizeOption.variantKey;
-            newLoadingMockups[productIdForMockup] = true;
+            
+            // Skip if we already have this mockup or are currently loading it
+            if (fetchingRef.current.has(productIdForMockup) || mockupUrls[productIdForMockup]) {
+              console.log(`⏸️ Skipping mockup fetch for ${productIdForMockup}: already have mockup or currently loading`);
+              continue;
+            }
+
+            fetchingRef.current.add(productIdForMockup); // Mark as fetching
             setLoadingMockups((prev) => ({ ...prev, [productIdForMockup]: true }));
 
+            console.log(`📤 Fetching Printful mockup for ${productIdForMockup}...`);
+
+            // Create promise for this mockup fetch
+            const mockupPromise = (async () => {
+              try {
+                const response = await fetch("/api/printful-mockup", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    product_id: productIdForMockup,
+                    image_url: selectedVariant.url,
+                  }),
+                });
+
+                if (response.ok) {
+                  const data = await response.json();
+                  if (data.mockup_url) {
+                    // Success - use Printful mockup
+                    console.log(`✅ Printful mockup ready for ${productIdForMockup}`);
+                    console.log(`📸 Mockup URL: ${data.mockup_url.substring(0, 80)}...`);
+                    setMockupUrls((prev) => {
+                      const updated = { ...prev, [productIdForMockup]: data.mockup_url };
+                      console.log(`💾 Updated mockupUrls state for key "${productIdForMockup}":`, updated[productIdForMockup] ? 'URL set' : 'NOT SET');
+                      return updated;
+                    });
+                    setLoadingMockups((prev) => ({ ...prev, [productIdForMockup]: false }));
+                    fetchingRef.current.delete(productIdForMockup); // Clear fetching status
+                  } else if (data.task_key) {
+                    // Poll for mockup if task-based (async generation)
+                    console.log(`⏳ Polling for Printful mockup task: ${data.task_key}`);
+                    const pollMockup = async () => {
+                      let attempts = 0;
+                      const maxAttempts = 15; // Increased attempts for reliability
+                      while (attempts < maxAttempts) {
+                        await new Promise((resolve) => setTimeout(resolve, 2000));
+                        try {
+                          const statusResponse = await fetch(`/api/printful-mockup/status?task_key=${data.task_key}`);
+                          if (statusResponse.ok) {
+                            const statusData = await statusResponse.json();
+                            if (statusData.mockup_url) {
+                              console.log(`✅ Printful mockup ready for ${productIdForMockup} after ${attempts + 1} attempts`);
+                              setMockupUrls((prev) => ({ ...prev, [productIdForMockup]: statusData.mockup_url }));
+                              setLoadingMockups((prev) => ({ ...prev, [productIdForMockup]: false }));
+                              fetchingRef.current.delete(productIdForMockup); // Clear fetching status
+                              return;
+                            }
+                          } else if (statusResponse.status === 202) {
+                            // Still processing - continue polling
+                            console.log(`⏳ Mockup still processing... (attempt ${attempts + 1}/${maxAttempts})`);
+                          }
+                        } catch (err) {
+                          console.debug(`Polling attempt ${attempts + 1} failed, continuing...`);
+                        }
+                        attempts++;
+                      }
+                      // If polling fails after max attempts, keep showing loading state
+                      console.error(`❌ Printful mockup polling failed for ${productIdForMockup} after ${maxAttempts} attempts`);
+                      setLoadingMockups((prev) => ({ ...prev, [productIdForMockup]: false }));
+                      fetchingRef.current.delete(productIdForMockup); // Clear fetching status
+                    };
+                    pollMockup();
+                  } else {
+                    console.error(`❌ No mockup URL or task_key returned for ${productIdForMockup}`);
+                    setLoadingMockups((prev) => ({ ...prev, [productIdForMockup]: false }));
+                    fetchingRef.current.delete(productIdForMockup); // Clear fetching status
+                  }
+                } else {
+                  // API error - log but keep showing customer photo
+                  const errorData = await response.json().catch(() => ({}));
+                  console.error(`❌ Printful API error for ${productIdForMockup}:`, errorData.message || response.status);
+                  setLoadingMockups((prev) => ({ ...prev, [productIdForMockup]: false }));
+                  fetchingRef.current.delete(productIdForMockup); // Clear fetching status
+                }
+              } catch (err) {
+                console.error(`❌ Error fetching mockup for ${productIdForMockup}:`, err);
+                setLoadingMockups((prev) => ({ ...prev, [productIdForMockup]: false }));
+                fetchingRef.current.delete(productIdForMockup); // Clear fetching status
+              }
+            })();
+
+            mockupPromises.push(mockupPromise);
+          }
+        } else {
+          // Product without sizes - fetch single mockup
+          const productIdForMockup = product.id;
+          
+          // Skip if we already have this mockup or are currently loading it
+          if (fetchingRef.current.has(productIdForMockup) || mockupUrls[productIdForMockup]) {
+            console.log(`⏸️ Skipping mockup fetch for ${productIdForMockup}: already have mockup or currently loading`);
+            continue;
+          }
+
+          fetchingRef.current.add(productIdForMockup);
+          setLoadingMockups((prev) => ({ ...prev, [productIdForMockup]: true }));
+
+          console.log(`📤 Fetching Printful mockup for ${productIdForMockup}...`);
+
+          // Create promise for this mockup fetch
+          const mockupPromise = (async () => {
             try {
               const response = await fetch("/api/printful-mockup", {
                 method: "POST",
@@ -123,141 +273,176 @@ export default function CheckoutPage() {
               if (response.ok) {
                 const data = await response.json();
                 if (data.mockup_url) {
-                  newMockupUrls[productIdForMockup] = data.mockup_url;
-                } else if (data.task_key) {
-                  // Poll for mockup if task-based
-                  const pollMockup = async () => {
-                    let attempts = 0;
-                    const maxAttempts = 10;
-                    while (attempts < maxAttempts) {
-                      await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait 2 seconds
-                      try {
-                        const statusResponse = await fetch(`/api/printful-mockup/status?task_key=${data.task_key}`);
-                        if (statusResponse.ok) {
-                          const statusData = await statusResponse.json();
-                          if (statusData.mockup_url) {
-                            newMockupUrls[productIdForMockup] = statusData.mockup_url;
-                            setMockupUrls((prev) => ({ ...prev, [productIdForMockup]: statusData.mockup_url }));
-                            setLoadingMockups((prev) => ({ ...prev, [productIdForMockup]: false }));
-                            return;
-                          }
-                        }
-                        // 202 (Accepted) or 404 means not ready yet - continue polling (don't log as error)
-                      } catch (err) {
-                        // Network errors - continue polling
-                        console.debug(`Polling attempt ${attempts + 1} failed, continuing...`);
-                      }
-                      attempts++;
-                    }
-                    // Fallback to original image if polling fails
-                    newMockupUrls[productIdForMockup] = selectedVariant.url;
-                    setLoadingMockups((prev) => ({ ...prev, [productIdForMockup]: false }));
-                  };
-                  pollMockup();
-                } else {
-                  // Fallback to original image
-                  newMockupUrls[productIdForMockup] = selectedVariant.url;
+                  console.log(`✅ Printful mockup ready for ${productIdForMockup}`);
+                  setMockupUrls((prev) => ({ ...prev, [productIdForMockup]: data.mockup_url }));
+                  setLoadingMockups((prev) => ({ ...prev, [productIdForMockup]: false }));
+                  fetchingRef.current.delete(productIdForMockup);
                 }
-              } else {
-                // Fallback to original image on error
-                newMockupUrls[productIdForMockup] = selectedVariant.url;
               }
             } catch (err) {
-              console.error(`Error fetching mockup for ${productIdForMockup}:`, err);
-              // Fallback to original image
-              newMockupUrls[productIdForMockup] = selectedVariant.url;
-            } finally {
+              console.error(`❌ Error fetching mockup for ${productIdForMockup}:`, err);
               setLoadingMockups((prev) => ({ ...prev, [productIdForMockup]: false }));
+              fetchingRef.current.delete(productIdForMockup);
             }
-          }
-          continue; // Skip the regular product mockup fetch for canvas
-        }
+          })();
 
-        newLoadingMockups[product.id] = true;
-        setLoadingMockups((prev) => ({ ...prev, [product.id]: true }));
-
-        try {
-          const response = await fetch("/api/printful-mockup", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              product_id: product.id,
-              image_url: selectedVariant.url,
-            }),
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            if (data.mockup_url) {
-              newMockupUrls[product.id] = data.mockup_url;
-                } else if (data.task_key) {
-                  // Poll for mockup if task-based
-                  const pollMockup = async () => {
-                    let attempts = 0;
-                    const maxAttempts = 10;
-                    while (attempts < maxAttempts) {
-                      await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait 2 seconds
-                      try {
-                        const statusResponse = await fetch(`/api/printful-mockup/status?task_key=${data.task_key}`);
-                        if (statusResponse.ok) {
-                          const statusData = await statusResponse.json();
-                          if (statusData.mockup_url) {
-                            newMockupUrls[product.id] = statusData.mockup_url;
-                            setMockupUrls((prev) => ({ ...prev, [product.id]: statusData.mockup_url }));
-                            setLoadingMockups((prev) => ({ ...prev, [product.id]: false }));
-                            return;
-                          }
-                        }
-                        // 202 (Accepted) or 404 means not ready yet - continue polling (don't log as error)
-                      } catch (err) {
-                        // Network errors - continue polling
-                        console.debug(`Polling attempt ${attempts + 1} failed, continuing...`);
-                      }
-                      attempts++;
-                    }
-                    // Fallback to original image if polling fails
-                    newMockupUrls[product.id] = selectedVariant.url;
-                    setLoadingMockups((prev) => ({ ...prev, [product.id]: false }));
-                  };
-                  pollMockup();
-            } else {
-              // Fallback to original image
-              newMockupUrls[product.id] = selectedVariant.url;
-            }
-          } else {
-            // Fallback to original image on error
-            newMockupUrls[product.id] = selectedVariant.url;
-          }
-        } catch (err) {
-          console.error(`Error fetching mockup for ${product.id}:`, err);
-          // Fallback to original image
-          newMockupUrls[product.id] = selectedVariant.url;
-        } finally {
-          setLoadingMockups((prev) => ({ ...prev, [product.id]: false }));
+          mockupPromises.push(mockupPromise);
         }
       }
 
-      setMockupUrls((prev) => ({ ...prev, ...newMockupUrls }));
+      // Execute all mockup fetches in parallel
+      await Promise.all(mockupPromises);
     };
 
-    fetchMockups();
-  }, [selectedVariant]);
+    fetchAllMockups();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedVariant?.url]); // Fetch when variant is available
 
+  // OLD CODE REMOVED: Was generating mockups for all products upfront (wasteful)
+  // Now we only generate mockups on-demand when a product is selected (see useEffect above)
+
+  // Open product detail modal (Etsy-style)
+  const handleProductClick = (product: Product) => {
+    setSelectedProductForModal(product);
+    setIsModalOpen(true);
+  };
+
+  // Select product for checkout (called from modal or direct selection)
   const handleProductSelect = (product: Product) => {
     setSelectedProduct(product);
     setError(null);
-    // Auto-select first size for canvas products
-    if (product.id === "canvas" && product.sizes && product.sizes.length > 0) {
+    // Auto-select first size for products with sizes (canvas, blanket, etc.)
+    if (product.sizes && product.sizes.length > 0) {
       setSelectedSize(product.sizes[0].size);
     } else {
       setSelectedSize(null);
     }
+    
+    // If product variants map exists, try to use a variant generated for this product
+    if (productVariantsMap && selectedVariant) {
+      const productId = product.sizes?.[0] 
+        ? product.sizes[0].variantKey 
+        : product.id;
+      
+      // Find the style of the currently selected variant
+      const variantStyle = Object.keys(productVariantsMap).find(style => 
+        Object.values(productVariantsMap[style]).some(variants => 
+          variants.some((v: any) => v.id === selectedVariant.id)
+        )
+      );
+      
+      if (variantStyle && productVariantsMap[variantStyle][productId]) {
+        // Use the first variant for this product (same style)
+        const productSpecificVariant = productVariantsMap[variantStyle][productId][0];
+        if (productSpecificVariant && productSpecificVariant.url !== selectedVariant.url) {
+          console.log(`🔄 Switching to product-specific variant for ${productId} (aspect ratio: ${productSpecificVariant.aspectRatio})`);
+          setSelectedVariant(productSpecificVariant);
+        }
+      }
+    }
+    
+    // Shipping will be calculated automatically via useEffect
   };
 
   const handleSizeSelect = (size: string) => {
     setSelectedSize(size);
     setError(null);
+    
+    // If product size changed, switch to variant for that size (canvas, blanket, etc.)
+    if (selectedProduct?.sizes && productVariantsMap && selectedVariant) {
+      const sizeOption = selectedProduct.sizes?.find(s => s.size === size);
+      if (sizeOption) {
+        const productId = sizeOption.variantKey; // "canvas-12x12" or "canvas-16x20"
+        
+        // Find the style of the currently selected variant
+        const variantStyle = Object.keys(productVariantsMap).find(style => 
+          Object.values(productVariantsMap[style]).some(variants => 
+            variants.some((v: any) => v.id === selectedVariant.id)
+          )
+        );
+        
+        if (variantStyle && productVariantsMap[variantStyle][productId]) {
+          // Use the first variant for this product size (same style)
+          const productSpecificVariant = productVariantsMap[variantStyle][productId][0];
+          if (productSpecificVariant && productSpecificVariant.url !== selectedVariant.url) {
+            console.log(`🔄 Switching to product-specific variant for ${productId} (aspect ratio: ${productSpecificVariant.aspectRatio})`);
+            setSelectedVariant(productSpecificVariant);
+          }
+        }
+      }
+    }
   };
+
+  // Calculate shipping automatically when product/size changes
+  const calculateShipping = async (addressOverride?: typeof shippingAddress) => {
+    const address = addressOverride || shippingAddress;
+    
+    // Use default US address if no address provided (for estimate)
+    const defaultAddress = {
+      address1: "123 Main St",
+      city: "New York",
+      state_code: "NY",
+      country_code: "US",
+      zip: "10001",
+    };
+    
+    const recipient = address.address1 && address.city && address.zip 
+      ? address 
+      : defaultAddress;
+
+    if (!selectedProduct) {
+      return;
+    }
+
+    setLoadingShipping(true);
+    try {
+      // Determine product ID
+      // Determine the product ID for shipping calculation
+      // The API route will convert product_id to catalog variant_id
+      let productId = selectedProduct.id;
+      if (selectedProduct.sizes && selectedSize) {
+        const sizeOption = selectedProduct.sizes.find(s => s.size === selectedSize);
+        if (sizeOption) {
+          productId = sizeOption.variantKey; // Use variantKey like "canvas-12x12"
+        }
+      }
+
+      const response = await fetch("/api/printful/shipping-rates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recipient,
+          items: [{ product_id: productId, quantity: 1 }],
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.shipping_options.length > 0) {
+          setShippingOptions(data.shipping_options);
+          // Use cheapest option by default
+          const cheapest = data.shipping_options.reduce((prev: any, curr: any) => 
+            curr.rate < prev.rate ? curr : prev
+          );
+          // Ensure rate is a number
+          const rate = typeof cheapest.rate === 'number' ? cheapest.rate : parseFloat(cheapest.rate) || 0;
+          setShippingCost(rate);
+        }
+      }
+    } catch (error) {
+      console.error("Error calculating shipping:", error);
+    } finally {
+      setLoadingShipping(false);
+    }
+  };
+
+  // Auto-calculate shipping when product or size changes
+  useEffect(() => {
+    if (selectedProduct) {
+      calculateShipping();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedProduct, selectedSize]); // Recalculate when product or size changes (shippingAddress intentionally excluded - uses default if not provided)
 
   const handleCheckout = async () => {
     if (!selectedProduct || !selectedVariant) {
@@ -265,9 +450,9 @@ export default function CheckoutPage() {
       return;
     }
 
-    // For canvas, require size selection
-    if (selectedProduct.id === "canvas" && !selectedSize) {
-      setError("Please select a canvas size");
+    // For products with sizes, require size selection
+    if (selectedProduct.sizes && selectedProduct.sizes.length > 0 && !selectedSize) {
+      setError(`Please select a ${selectedProduct.name.toLowerCase()} size`);
       return;
     }
 
@@ -279,15 +464,18 @@ export default function CheckoutPage() {
     let productName = selectedProduct.name;
     let price = selectedProduct.price;
 
-    // For canvas, use the size-specific variant key
-    if (selectedProduct.id === "canvas" && selectedSize) {
-      const sizeOption = selectedProduct.sizes?.find(s => s.size === selectedSize);
+    // For products with sizes, use the size-specific variant key
+    if (selectedProduct.sizes && selectedSize) {
+      const sizeOption = selectedProduct.sizes.find(s => s.size === selectedSize);
       if (sizeOption) {
-        productId = sizeOption.variantKey; // Use "canvas-12x12" or "canvas-16x20"
+        productId = sizeOption.variantKey; // Use "canvas-12x12", "blanket-37x57", etc.
         productName = `${selectedSize} ${selectedProduct.name}`;
         price = sizeOption.price;
       }
     }
+
+    // Shipping is already calculated automatically when product is selected
+    const finalShippingCost = shippingCost || 0;
 
     try {
       const response = await fetch("/api/checkout", {
@@ -301,6 +489,7 @@ export default function CheckoutPage() {
           price: price,
           variant_url: selectedVariant.url,
           variant_id: selectedVariant.id,
+          shipping_cost: finalShippingCost || 0, // Include shipping cost
         }),
       });
 
@@ -376,7 +565,7 @@ export default function CheckoutPage() {
                 return (
                   <div
                     key={product.id}
-                    onClick={() => handleProductSelect(product)}
+                    onClick={() => handleProductClick(product)}
                     className={`relative bg-white rounded-lg shadow-md overflow-hidden cursor-pointer transition-all duration-300 ${
                       isSelected
                         ? "ring-4 ring-amber-500 scale-105 shadow-xl"
@@ -391,83 +580,221 @@ export default function CheckoutPage() {
                     
                     {/* Product Preview with Printful Mockup */}
                     <div className="relative aspect-square bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden min-h-[260px]">
-                      {product.id === "canvas" ? (
-                        // Canvas: Show mockup for selected size, or default to first size, or show placeholder
+                      {product.sizes ? (
+                        // Products with sizes: Show mockup for selected size if this product is selected, otherwise show first size
                         (() => {
-                          // Determine which size to show: selected size, or first size, or none
-                          const displaySize = selectedSize || (product.sizes && product.sizes[0]?.size);
-                          const mockupKey = displaySize ? `canvas-${displaySize}` : null;
-                          const isLoading = mockupKey ? loadingMockups[mockupKey] : false;
-                          const mockupUrl = mockupKey ? mockupUrls[mockupKey] : null;
+                          // If this product is selected, use selectedSize; otherwise use first size
+                          const displaySize = isSelected && selectedSize 
+                            ? selectedSize 
+                            : (product.sizes && product.sizes[0]?.size);
+                          const sizeOption = displaySize ? product.sizes.find(s => s.size === displaySize) : null;
+                          const mockupKey = sizeOption ? sizeOption.variantKey : null;
+                          const isLoading = mockupKey ? (loadingMockups[mockupKey] ?? false) : false;
+                          // Try both the direct lookup and the state value
+                          const mockupUrl = mockupKey ? (mockupUrls[mockupKey] || null) : null;
+                          
+                          // CRITICAL: Log the actual values being used in the condition
+                          if (mockupKey) {
+                            console.log(`🔬 CONDITION CHECK for ${mockupKey}:`, {
+                              'isLoading': isLoading,
+                              'mockupUrl exists': !!mockupUrl,
+                              'mockupUrl value': mockupUrl,
+                              'Will enter loading branch': isLoading,
+                              'Will enter mockup branch': !isLoading && !!mockupUrl,
+                              'Will enter placeholder branch': !isLoading && !mockupUrl && !!selectedVariant
+                            });
+                          }
+                          
+                          // Debug logging
+                          if (mockupKey) {
+                            const actualUrl = mockupUrls[mockupKey];
+                            console.log(`🔍 Rendering mockup for key "${mockupKey}":`);
+                            console.log(`  - isLoading: ${isLoading}`);
+                            console.log(`  - hasMockupUrl: ${!!mockupUrl}`);
+                            console.log(`  - mockupUrl: ${mockupUrl || 'NULL'}`);
+                            console.log(`  - actualUrlFromState: ${actualUrl || 'NULL'}`);
+                            console.log(`  - allKeys: ${Object.keys(mockupUrls).join(', ')}`);
+                            console.log(`  - willRenderMockup: ${!isLoading && !!mockupUrl}`);
+                            console.log(`  - willShowPlaceholder: ${!isLoading && !mockupUrl && !!selectedVariant}`);
+                            console.log(`  - Full state:`, mockupUrls);
+                          }
                           
                           if (isLoading) {
+                            // Show customer photo with loading indicator while Printful mockup is generating
                             return (
-                              <div className="absolute inset-0 flex items-center justify-center">
-                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600"></div>
+                              <div className="absolute inset-0">
+                                {selectedVariant && (
+                                  <Image
+                                    src={selectedVariant.url}
+                                    alt="Loading preview"
+                                    fill
+                                    className="object-contain opacity-50"
+                                    sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                                  />
+                                )}
+                                <div className="absolute inset-0 flex items-center justify-center bg-white/30">
+                                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600"></div>
+                                </div>
                               </div>
                             );
                           } else if (mockupUrl) {
+                            // Show Printful mockup when ready
+                            console.log(`🖼️ RENDERING MOCKUP - Key: ${mockupKey}, URL: ${mockupUrl}`);
+                            console.log(`🖼️ Condition check: isLoading=${isLoading}, mockupUrl=${!!mockupUrl}`);
                             return (
-                              <Image
-                                src={mockupUrl}
-                                alt={`Canvas ${displaySize} mockup`}
-                                fill
-                                className="object-contain"
-                                sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                              />
+                              <div 
+                                className="absolute inset-0 w-full h-full z-10"
+                                style={{ 
+                                  minHeight: '260px', 
+                                  backgroundColor: 'white',
+                                  position: 'absolute',
+                                  top: 0,
+                                  left: 0,
+                                  right: 0,
+                                  bottom: 0,
+                                  display: 'block',
+                                  visibility: 'visible',
+                                  opacity: 1
+                                }}
+                                data-mockup-key={mockupKey}
+                                data-mockup-url={mockupUrl}
+                              >
+                                {/* Use regular img tag since Next.js Image might have optimization issues */}
+                                <img 
+                                  src={mockupUrl} 
+                                  alt={`${product.name} ${displaySize} mockup`}
+                                  style={{ 
+                                    display: 'block !important',
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    width: '100%', 
+                                    height: '100%', 
+                                    objectFit: 'contain',
+                                    zIndex: 1,
+                                    visibility: 'visible',
+                                    opacity: 1,
+                                    pointerEvents: 'auto'
+                                  }}
+                                  onLoad={(e) => {
+                                    const img = e.currentTarget;
+                                    const container = document.querySelector(`[data-mockup-key="${mockupKey}"]`) as HTMLElement;
+                                    const computedStyle = window.getComputedStyle(img);
+                                    const containerStyle = container ? window.getComputedStyle(container) : null;
+                                    
+                                    console.log(`✅ Mockup image loaded successfully:`, mockupUrl);
+                                    console.log(`✅ Image dimensions:`);
+                                    console.log(`   - width: ${img.width}, height: ${img.height}`);
+                                    console.log(`   - naturalWidth: ${img.naturalWidth}, naturalHeight: ${img.naturalHeight}`);
+                                    console.log(`   - clientWidth: ${img.clientWidth}, clientHeight: ${img.clientHeight}`);
+                                    console.log(`   - offsetWidth: ${img.offsetWidth}, offsetHeight: ${img.offsetHeight}`);
+                                    console.log(`✅ Image CSS:`);
+                                    console.log(`   - display: ${computedStyle.display}`);
+                                    console.log(`   - visibility: ${computedStyle.visibility}`);
+                                    console.log(`   - opacity: ${computedStyle.opacity}`);
+                                    console.log(`   - position: ${computedStyle.position}`);
+                                    console.log(`   - z-index: ${computedStyle.zIndex}`);
+                                    console.log(`✅ Container dimensions:`);
+                                    if (container) {
+                                      console.log(`   - containerWidth: ${container.offsetWidth}, containerHeight: ${container.offsetHeight}`);
+                                      console.log(`   - containerDisplay: ${containerStyle?.display}`);
+                                      console.log(`   - containerVisibility: ${containerStyle?.visibility}`);
+                                      console.log(`   - containerOpacity: ${containerStyle?.opacity}`);
+                                      console.log(`   - containerZIndex: ${containerStyle?.zIndex}`);
+                                      
+                                      // Check parent container
+                                      const parent = container.parentElement;
+                                      if (parent) {
+                                        const parentStyle = window.getComputedStyle(parent);
+                                        console.log(`✅ Parent container:`);
+                                        console.log(`   - parentWidth: ${parent.offsetWidth}, parentHeight: ${parent.offsetHeight}`);
+                                        console.log(`   - parentDisplay: ${parentStyle.display}`);
+                                        console.log(`   - parentOverflow: ${parentStyle.overflow}`);
+                                        console.log(`   - parentZIndex: ${parentStyle.zIndex}`);
+                                      }
+                                    } else {
+                                      console.log(`   - Container not found!`);
+                                    }
+                                  }}
+                                  onError={(e) => {
+                                    console.error(`❌ Failed to load mockup image:`, mockupUrl, e);
+                                    console.error(`❌ Error details:`, e);
+                                  }}
+                                />
+                              </div>
                             );
-                          } else {
-                            // Show placeholder portrait image
+                          } else if (selectedVariant) {
+                            // Show customer photo while waiting for Printful mockup
                             return (
                               <div className="absolute inset-0 bg-white rounded shadow-lg border-2 border-amber-800/20 flex items-center justify-center p-4">
-                                {selectedVariant ? (
-                                  <Image
-                                    src={selectedVariant.url}
-                                    alt="Canvas preview"
-                                    fill
-                                    className="object-contain rounded"
-                                    sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                                  />
-                                ) : (
-                                  <div className="text-center text-gray-400">
-                                    <p className="text-sm">Loading preview...</p>
-                                  </div>
-                                )}
+                                <Image
+                                  src={selectedVariant.url}
+                                  alt="Preview"
+                                  fill
+                                  className="object-contain rounded"
+                                  sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                                />
+                              </div>
+                            );
+                          } else {
+                            return (
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="text-center text-gray-400">
+                                  <p className="text-sm">Loading preview...</p>
+                                </div>
                               </div>
                             );
                           }
                         })()
-                      ) : loadingMockups[product.id] ? (
-                        // Loading state while fetching Printful mockup
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600"></div>
-                        </div>
-                      ) : mockupUrls[product.id] ? (
-                        // Show Printful mockup if available (for other products)
-                        <Image
-                          src={mockupUrls[product.id]}
-                          alt={`${product.name} mockup`}
-                          fill
-                          className="object-contain"
-                          sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                        />
-                      ) : selectedVariant ? (
-                        // Fallback: Show original portrait if mockup not available
-                        <Image
-                          src={selectedVariant.url}
-                          alt={`${product.name} with portrait`}
-                          fill
-                          className="object-cover rounded-lg"
-                          sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                        />
-                      ) : null}
-                      
-                      {/* Product label overlay */}
-                      <div className="absolute bottom-2 left-2 right-2 bg-white/95 backdrop-blur-sm rounded px-2 py-1 shadow-md">
-                        <p className="text-xs font-semibold text-gray-900 text-center">
-                          {product.icon} {product.name}
-                        </p>
-                      </div>
+                      ) : (() => {
+                        // Products without sizes
+                        const isLoading = loadingMockups[product.id];
+                        const mockupUrl = mockupUrls[product.id];
+                        
+                        if (isLoading) {
+                          // Show customer photo with loading indicator while Printful mockup is generating
+                          return (
+                            <div className="absolute inset-0">
+                              {selectedVariant && (
+                                <Image
+                                  src={selectedVariant.url}
+                                  alt="Loading preview"
+                                  fill
+                                  className="object-contain opacity-50"
+                                  sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                                />
+                              )}
+                              <div className="absolute inset-0 flex items-center justify-center bg-white/30">
+                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600"></div>
+                              </div>
+                            </div>
+                          );
+                        } else if (mockupUrl) {
+                          // Show Printful mockup when ready
+                          return (
+                            <Image
+                              src={mockupUrl}
+                              alt={`${product.name} mockup`}
+                              fill
+                              className="object-contain"
+                              sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                            />
+                          );
+                        } else if (selectedVariant) {
+                          // Show customer photo while waiting for Printful mockup
+                          return (
+                            <Image
+                              src={selectedVariant.url}
+                              alt={`${product.name} preview`}
+                              fill
+                              className="object-cover rounded-lg"
+                              sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                            />
+                          );
+                        } else {
+                          return null;
+                        }
+                      })()}
                     </div>
                     
                     <div className="p-4">
@@ -478,8 +805,8 @@ export default function CheckoutPage() {
                         {product.description}
                       </p>
                       
-                      {/* Size Selection for Canvas */}
-                      {product.id === "canvas" && product.sizes && isSelected && (
+                      {/* Size Selection for Products with Sizes */}
+                      {product.sizes && isSelected && (
                         <div className="mb-3">
                           <p className="text-xs font-semibold text-gray-700 mb-2">Select Size:</p>
                           <div className="flex gap-2 justify-center">
@@ -505,8 +832,8 @@ export default function CheckoutPage() {
                       
                       <div className="text-center">
                         <p className="text-2xl font-bold text-amber-600">
-                          ${product.id === "canvas" && selectedSize && isSelected
-                            ? product.sizes?.find(s => s.size === selectedSize)?.price || product.price
+                          ${product.sizes && selectedSize && isSelected
+                            ? product.sizes.find(s => s.size === selectedSize)?.price || product.price
                             : product.price}
                         </p>
                       </div>
@@ -542,23 +869,74 @@ export default function CheckoutPage() {
 
             {selectedProduct && (
               <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-900">Selected Product</h3>
-                    <p className="text-gray-600">{selectedProduct.name}</p>
+                <div className="mb-4">
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">Order Summary</h3>
+                  
+                  {/* Product Price */}
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <p className="text-gray-700 font-medium">
+                        {selectedProduct.sizes && selectedSize
+                          ? `${selectedSize} ${selectedProduct.name}`
+                          : selectedProduct.name}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-semibold text-gray-900">
+                        ${selectedProduct.sizes && selectedSize
+                          ? selectedProduct.sizes.find(s => s.size === selectedSize)?.price || selectedProduct.price
+                          : selectedProduct.price}
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-bold text-amber-600">
-                      ${selectedProduct.price}
-                    </p>
+
+                  {/* Shipping Cost */}
+                  <div className="flex items-center justify-between mb-2 border-t pt-2">
+                    <div>
+                      <p className="text-gray-700 font-medium">Shipping</p>
+                      {loadingShipping && (
+                        <p className="text-xs text-gray-500">Calculating...</p>
+                      )}
+                      {!loadingShipping && !shippingCost && (
+                        <p className="text-xs text-gray-500">Estimate (US)</p>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      {loadingShipping ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-amber-600 inline-block"></div>
+                      ) : shippingCost !== null && shippingCost !== undefined ? (
+                        <p className="text-lg font-semibold text-gray-900">${Number(shippingCost).toFixed(2)}</p>
+                      ) : (
+                        <p className="text-sm text-gray-500">—</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Total */}
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t-2 border-gray-200">
+                    <div>
+                      <p className="text-lg font-bold text-gray-900">Total</p>
+                      <p className="text-xs text-gray-500">+ tax (calculated at checkout)</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-amber-600">
+                        ${(
+                          (selectedProduct.sizes && selectedSize
+                            ? selectedProduct.sizes.find(s => s.size === selectedSize)?.price || selectedProduct.price
+                            : selectedProduct.price) +
+                          (shippingCost || 0)
+                        ).toFixed(2)}
+                      </p>
+                    </div>
                   </div>
                 </div>
+                
                 <button
                   onClick={handleCheckout}
-                  disabled={loading}
+                  disabled={loading || loadingShipping}
                   className="w-full px-8 py-4 bg-amber-600 hover:bg-amber-700 disabled:bg-gray-400 text-white text-lg font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 disabled:transform-none"
                 >
-                  {loading ? "Processing..." : `Proceed to Payment →`}
+                  {loading ? "Processing..." : loadingShipping ? "Calculating Shipping..." : `Proceed to Payment →`}
                 </button>
               </div>
             )}
@@ -574,6 +952,26 @@ export default function CheckoutPage() {
           </div>
         </div>
       </div>
+      
+      {/* Product Detail Modal */}
+      {selectedProductForModal && (
+        <ProductDetailModal
+          isOpen={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false);
+            setSelectedProductForModal(null);
+          }}
+          productId={selectedProductForModal.sizes?.[0]?.variantKey || selectedProductForModal.id}
+          productName={selectedProductForModal.name}
+          productDescription={selectedProductForModal.description}
+          productIcon={selectedProductForModal.icon}
+          sizes={selectedProductForModal.sizes}
+          selectedVariantUrl={selectedVariant?.url}
+          onSelectProduct={() => handleProductSelect(selectedProductForModal)}
+          mockupUrls={mockupUrls}
+          loadingMockups={loadingMockups}
+        />
+      )}
     </div>
   );
 }

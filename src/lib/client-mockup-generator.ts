@@ -396,3 +396,193 @@ export async function generateCanvasMockup(imageUrl: string): Promise<string> {
   });
 }
 
+/**
+ * Generate a blanket mockup (similar to canvas - framed image on fabric texture)
+ * @param imageUrl - URL of the customer's portrait image
+ * @returns Promise resolving to a data URL of the generated mockup
+ */
+export async function generateBlanketMockup(imageUrl: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    if (!ctx) {
+      reject(new Error('Canvas context not available'));
+      return;
+    }
+
+    const width = 800;
+    const height = 1000;
+    canvas.width = width;
+    canvas.height = height;
+
+    // Load the customer's image
+    // If the image is from an external domain, use our proxy to avoid CORS issues
+    let imageUrlToLoad = imageUrl;
+    try {
+      const url = new URL(imageUrl);
+      // If it's not from the same origin, use the proxy
+      // Check if we're in a browser environment
+      if (typeof window !== 'undefined' && url.origin !== window.location.origin) {
+        imageUrlToLoad = `/api/image-proxy?url=${encodeURIComponent(imageUrl)}`;
+      } else if (typeof window === 'undefined') {
+        // Server-side: always use proxy for external URLs
+        imageUrlToLoad = `/api/image-proxy?url=${encodeURIComponent(imageUrl)}`;
+      }
+    } catch (e) {
+      // Invalid URL, use proxy as fallback
+      console.debug('Could not parse image URL, using proxy:', e);
+      imageUrlToLoad = `/api/image-proxy?url=${encodeURIComponent(imageUrl)}`;
+    }
+
+    const customerImage = new Image();
+    // Don't set crossOrigin for proxied images (they're same-origin now)
+    if (!imageUrlToLoad.startsWith('/api/image-proxy')) {
+      try {
+        customerImage.crossOrigin = 'anonymous';
+      } catch (e) {
+        console.debug('CORS setting skipped:', e);
+      }
+    }
+    
+    customerImage.onload = () => {
+      try {
+        // Draw background with fabric texture effect
+        const bgGradient = ctx.createLinearGradient(0, 0, width, height);
+        bgGradient.addColorStop(0, '#f5f5f5');
+        bgGradient.addColorStop(0.5, '#fafafa');
+        bgGradient.addColorStop(1, '#f0f0f0');
+        ctx.fillStyle = bgGradient;
+        ctx.fillRect(0, 0, width, height);
+
+        // Add subtle texture pattern (simulate fabric)
+        ctx.fillStyle = 'rgba(200, 200, 200, 0.03)';
+        for (let i = 0; i < 100; i++) {
+          const x = Math.random() * width;
+          const y = Math.random() * height;
+          ctx.fillRect(x, y, 2, 2);
+        }
+
+        // Draw blanket area (slightly rounded corners for soft fabric look)
+        const blanketWidth = width * 0.9;
+        const blanketHeight = height * 0.85;
+        const blanketX = (width - blanketWidth) / 2;
+        const blanketY = (height - blanketHeight) / 2;
+        const cornerRadius = 15;
+
+        // Blanket shadow
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+        ctx.shadowBlur = 25;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 10;
+
+        // Draw blanket shape with rounded corners
+        ctx.beginPath();
+        ctx.moveTo(blanketX + cornerRadius, blanketY);
+        ctx.lineTo(blanketX + blanketWidth - cornerRadius, blanketY);
+        ctx.quadraticCurveTo(blanketX + blanketWidth, blanketY, blanketX + blanketWidth, blanketY + cornerRadius);
+        ctx.lineTo(blanketX + blanketWidth, blanketY + blanketHeight - cornerRadius);
+        ctx.quadraticCurveTo(blanketX + blanketWidth, blanketY + blanketHeight, blanketX + blanketWidth - cornerRadius, blanketY + blanketHeight);
+        ctx.lineTo(blanketX + cornerRadius, blanketY + blanketHeight);
+        ctx.quadraticCurveTo(blanketX, blanketY + blanketHeight, blanketX, blanketY + blanketHeight - cornerRadius);
+        ctx.lineTo(blanketX, blanketY + cornerRadius);
+        ctx.quadraticCurveTo(blanketX, blanketY, blanketX + cornerRadius, blanketY);
+        ctx.closePath();
+
+        // Blanket background (slightly off-white for fabric look)
+        ctx.fillStyle = '#fefefe';
+        ctx.fill();
+
+        // Reset shadow
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+
+        // Draw image inside blanket area
+        const imagePadding = 15;
+        const imageX = blanketX + imagePadding;
+        const imageY = blanketY + imagePadding;
+        const imageWidth = blanketWidth - imagePadding * 2;
+        const imageHeight = blanketHeight - imagePadding * 2;
+
+        const imageAspect = customerImage.width / customerImage.height;
+        const blanketAspect = imageWidth / imageHeight;
+
+        let drawWidth = imageWidth;
+        let drawHeight = imageHeight;
+        let drawX = imageX;
+        let drawY = imageY;
+
+        // Maintain aspect ratio
+        if (imageAspect > blanketAspect) {
+          drawHeight = drawWidth / imageAspect;
+          drawY = imageY + (imageHeight - drawHeight) / 2;
+        } else {
+          drawWidth = drawHeight * imageAspect;
+          drawX = imageX + (imageWidth - drawWidth) / 2;
+        }
+
+        // Clip to rounded rectangle for image
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(drawX + cornerRadius, drawY);
+        ctx.lineTo(drawX + drawWidth - cornerRadius, drawY);
+        ctx.quadraticCurveTo(drawX + drawWidth, drawY, drawX + drawWidth, drawY + cornerRadius);
+        ctx.lineTo(drawX + drawWidth, drawY + drawHeight - cornerRadius);
+        ctx.quadraticCurveTo(drawX + drawWidth, drawY + drawHeight, drawX + drawWidth - cornerRadius, drawY + drawHeight);
+        ctx.lineTo(drawX + cornerRadius, drawY + drawHeight);
+        ctx.quadraticCurveTo(drawX, drawY + drawHeight, drawX, drawY + drawHeight - cornerRadius);
+        ctx.lineTo(drawX, drawY + cornerRadius);
+        ctx.quadraticCurveTo(drawX, drawY, drawX + cornerRadius, drawY);
+        ctx.closePath();
+        ctx.clip();
+
+        ctx.drawImage(customerImage, drawX, drawY, drawWidth, drawHeight);
+        ctx.restore();
+
+        // Blanket border (subtle, like fabric edge)
+        ctx.strokeStyle = '#e8e8e8';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(blanketX + cornerRadius, blanketY);
+        ctx.lineTo(blanketX + blanketWidth - cornerRadius, blanketY);
+        ctx.quadraticCurveTo(blanketX + blanketWidth, blanketY, blanketX + blanketWidth, blanketY + cornerRadius);
+        ctx.lineTo(blanketX + blanketWidth, blanketY + blanketHeight - cornerRadius);
+        ctx.quadraticCurveTo(blanketX + blanketWidth, blanketY + blanketHeight, blanketX + blanketWidth - cornerRadius, blanketY + blanketHeight);
+        ctx.lineTo(blanketX + cornerRadius, blanketY + blanketHeight);
+        ctx.quadraticCurveTo(blanketX, blanketY + blanketHeight, blanketX, blanketY + blanketHeight - cornerRadius);
+        ctx.lineTo(blanketX, blanketY + cornerRadius);
+        ctx.quadraticCurveTo(blanketX, blanketY, blanketX + cornerRadius, blanketY);
+        ctx.closePath();
+        ctx.stroke();
+
+        const dataUrl = canvas.toDataURL('image/png', 0.95);
+        console.log('✅ Blanket mockup generated, data URL length:', dataUrl.length);
+        resolve(dataUrl);
+      } catch (error) {
+        console.error('❌ Error during blanket drawing:', error);
+        reject(error);
+      }
+    };
+
+    customerImage.onerror = (error) => {
+      console.error('❌ Failed to load customer image for blanket mockup:', error);
+      console.error('Image URL attempted:', imageUrlToLoad);
+      // If direct load failed and we're not already using proxy, try proxy
+      if (!imageUrlToLoad.startsWith('/api/image-proxy')) {
+        console.log('🔄 Retrying with image proxy...');
+        customerImage.crossOrigin = '';
+        const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(imageUrl)}`;
+        console.log('Proxy URL:', proxyUrl);
+        customerImage.src = proxyUrl;
+      } else {
+        console.error('❌ Image proxy also failed. Image URL may be invalid or inaccessible.');
+        reject(new Error(`Failed to load customer image. URL: ${imageUrl}`));
+      }
+    };
+
+    customerImage.src = imageUrlToLoad;
+  });
+}
+
