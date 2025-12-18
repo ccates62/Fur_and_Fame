@@ -210,16 +210,19 @@ export async function POST(request: NextRequest) {
           allVariants[key] = placeholders;
         } catch (fallbackError) {
           console.error("Even fallback placeholders failed:", fallbackError);
-          // Last resort - create 3 minimal placeholders
+          // Last resort - create 3 minimal placeholders with consistent seeds
           const fallbackVariants = [];
+          const subjectKey = `${subject.type}-${subject.id}`;
           for (let i = 1; i <= 3; i++) {
+            // Use consistent seed based on subject and variant number
+            const seed = `fallback-${subjectKey}-${i}-v2`;
             fallbackVariants.push({
               id: `fallback-${i}`,
-              url: `https://picsum.photos/800/1000?random=${i}`,
+              url: `https://picsum.photos/seed/${seed}/800/1000`,
               prompt: `Placeholder image ${i}`,
             });
           }
-          allVariants[`${subject.type}-${subject.id}`] = fallbackVariants;
+          allVariants[subjectKey] = fallbackVariants;
         }
       }
     }
