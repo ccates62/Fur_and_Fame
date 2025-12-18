@@ -82,6 +82,9 @@ export default function CheckoutPage() {
   const [mockupUrls, setMockupUrls] = useState<Record<string, string>>({});
   const [loadingMockups, setLoadingMockups] = useState<Record<string, boolean>>({});
   const fetchingRef = useRef<Set<string>>(new Set()); // Track ongoing fetches to prevent duplicates
+  const fetchQueueRef = useRef<string[]>([]); // Queue of mockups to fetch
+  const priorityKeyRef = useRef<string | null>(null); // Priority key to fetch next
+  const isFetchingRef = useRef<boolean>(false); // Is the fetch loop running
   
   // Product detail modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -143,110 +146,155 @@ export default function CheckoutPage() {
       fullUrl: selectedVariant.url
     });
 
-    // Fetch mockups sequentially with delays to avoid Printful rate limits
-    // New stores have limit of 2 requests/minute
-    const fetchAllMockups = async () => {
-      // Check sessionStorage cache first
-      const cachedMockups = sessionStorage.getItem("mockupUrls");
-      if (cachedMockups) {
-        try {
-          const cached = JSON.parse(cachedMockups);
-          if (Object.keys(cached).length > 0) {
-            console.log("📦 Using cached mockups from sessionStorage");
-            setMockupUrls(cached);
-            return; // Use cached mockups, skip fetching
-          }
-        } catch (e) {
-          console.log("⚠️ Could not parse cached mockups");
+    // Check sessionStorage cache first
+    const cachedMockups = sessionStorage.getItem("mockupUrls");
+    if (cachedMockups) {
+      try {
+        const cached = JSON.parse(cachedMockups);
+        if (Object.keys(cached).length > 0) {
+          console.log("📦 Using cached mockups from sessionStorage");
+          setMockupUrls(cached);
+          return; // Use cached mockups, skip fetching
         }
+      } catch (e) {
+        console.log("⚠️ Could not parse cached mockups");
       }
+    }
 
-      // Collect all product keys to fetch
-      const keysToFetch: string[] = [];
+    // Build fetch queue: one size per product first, then remaining sizes
+    const firstSizes: string[] = [];
+    const remainingSizes: string[] = [];
 
-      for (const product of products) {
-        if (product.sizes && product.sizes.length > 0) {
-          for (const sizeOption of product.sizes) {
-            keysToFetch.push(sizeOption.variantKey);
-          }
-        } else {
-          keysToFetch.push(product.id);
+    for (const product of products) {
+      if (product.sizes && product.sizes.length > 0) {
+        // Add first size to priority list
+        firstSizes.push(product.sizes[0].variantKey);
+        // Add remaining sizes to secondary list
+        for (let i = 1; i < product.sizes.length; i++) {
+          remainingSizes.push(product.sizes[i].variantKey);
         }
+      } else {
+        firstSizes.push(product.id);
       }
+    }
 
-      // Set all as loading
-      const loadingState: Record<string, boolean> = {};
-      keysToFetch.forEach(key => { loadingState[key] = true; });
-      setLoadingMockups(loadingState);
+    // Queue: first sizes first, then remaining
+    fetchQueueRef.current = [...firstSizes, ...remainingSizes];
+    console.log("📋 Fetch queue:", fetchQueueRef.current);
 
-      // Fetch mockups SEQUENTIALLY with delay to avoid rate limits
-      const newMockupUrls: Record<string, string> = {};
-      
-      for (let i = 0; i < keysToFetch.length; i++) {
-        const productIdForMockup = keysToFetch[i];
-        
-        // Skip if already fetching
-        if (fetchingRef.current.has(productIdForMockup)) {
-          continue;
-        }
-        fetchingRef.current.add(productIdForMockup);
+    // Set all as loading
+    const loadingState: Record<string, boolean> = {};
+    fetchQueueRef.current.forEach(key => { loadingState[key] = true; });
+    setLoadingMockups(loadingState);
 
-        console.log(`📤 Fetching Printful mockup for ${productIdForMockup}... (${i + 1}/${keysToFetch.length})`);
-
-        try {
-          const response = await fetch("/api/printful-mockup", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              product_id: productIdForMockup,
-              image_url: selectedVariant.url,
-            }),
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            if (data.mockup_url) {
-              console.log(`✅ Printful mockup ready for ${productIdForMockup}`);
-              newMockupUrls[productIdForMockup] = data.mockup_url;
-              setMockupUrls(prev => ({ ...prev, [productIdForMockup]: data.mockup_url }));
-              setLoadingMockups(prev => ({ ...prev, [productIdForMockup]: false }));
-            }
-          } else {
-            console.error(`❌ Printful API error for ${productIdForMockup}`);
-            setLoadingMockups(prev => ({ ...prev, [productIdForMockup]: false }));
-          }
-        } catch (err) {
-          console.error(`❌ Error fetching mockup for ${productIdForMockup}:`, err);
-          setLoadingMockups(prev => ({ ...prev, [productIdForMockup]: false }));
-        }
-
-        fetchingRef.current.delete(productIdForMockup);
-
-        // Wait 35 seconds between requests to avoid rate limiting (2 req/min = 30s between)
-        if (i < keysToFetch.length - 1) {
-          console.log(`⏳ Waiting 35s before next mockup request to avoid rate limits...`);
-          await new Promise(resolve => setTimeout(resolve, 35000));
-        }
-      }
-
-      // Cache in sessionStorage
-      if (Object.keys(newMockupUrls).length > 0) {
-        sessionStorage.setItem("mockupUrls", JSON.stringify(newMockupUrls));
-        console.log("💾 Cached mockup URLs in sessionStorage");
-      }
-    };
-
-    fetchAllMockups();
+    // Start the fetch loop if not already running
+    if (!isFetchingRef.current) {
+      processFetchQueue();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedVariant?.url]); // Fetch when variant is available
 
-  // OLD CODE REMOVED: Was generating mockups for all products upfront (wasteful)
-  // Now we only generate mockups on-demand when a product is selected (see useEffect above)
+  // Process the fetch queue sequentially with rate limiting
+  const processFetchQueue = async () => {
+    if (isFetchingRef.current) return; // Already running
+    isFetchingRef.current = true;
+
+    const newMockupUrls: Record<string, string> = {};
+
+    while (fetchQueueRef.current.length > 0 || priorityKeyRef.current) {
+      // Check for priority key first
+      let keyToFetch: string | null = null;
+      
+      if (priorityKeyRef.current && !mockupUrls[priorityKeyRef.current] && !fetchingRef.current.has(priorityKeyRef.current)) {
+        keyToFetch = priorityKeyRef.current;
+        priorityKeyRef.current = null;
+        // Remove from queue if present
+        fetchQueueRef.current = fetchQueueRef.current.filter(k => k !== keyToFetch);
+        console.log(`🚀 Priority fetch: ${keyToFetch}`);
+      } else if (fetchQueueRef.current.length > 0) {
+        keyToFetch = fetchQueueRef.current.shift() || null;
+      }
+
+      if (!keyToFetch) break;
+
+      // Skip if already have mockup or currently fetching
+      if (mockupUrls[keyToFetch] || newMockupUrls[keyToFetch] || fetchingRef.current.has(keyToFetch)) {
+        setLoadingMockups(prev => ({ ...prev, [keyToFetch!]: false }));
+        continue;
+      }
+
+      fetchingRef.current.add(keyToFetch);
+      console.log(`📤 Fetching Printful mockup for ${keyToFetch}...`);
+
+      try {
+        const response = await fetch("/api/printful-mockup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            product_id: keyToFetch,
+            image_url: selectedVariant?.url,
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.mockup_url) {
+            console.log(`✅ Printful mockup ready for ${keyToFetch}`);
+            newMockupUrls[keyToFetch] = data.mockup_url;
+            setMockupUrls(prev => {
+              const updated = { ...prev, [keyToFetch!]: data.mockup_url };
+              // Update cache
+              sessionStorage.setItem("mockupUrls", JSON.stringify(updated));
+              return updated;
+            });
+          }
+        } else {
+          console.error(`❌ Printful API error for ${keyToFetch}`);
+        }
+      } catch (err) {
+        console.error(`❌ Error fetching mockup for ${keyToFetch}:`, err);
+      }
+
+      fetchingRef.current.delete(keyToFetch);
+      setLoadingMockups(prev => ({ ...prev, [keyToFetch!]: false }));
+
+      // Wait 35 seconds between requests to avoid rate limiting
+      if (fetchQueueRef.current.length > 0 || priorityKeyRef.current) {
+        console.log(`⏳ Waiting 35s before next mockup request...`);
+        await new Promise(resolve => setTimeout(resolve, 35000));
+      }
+    }
+
+    isFetchingRef.current = false;
+    console.log("✅ Fetch queue complete");
+  };
+
+  // Prioritize fetching a specific mockup (called when user clicks a product)
+  const prioritizeMockup = (key: string) => {
+    if (mockupUrls[key] || fetchingRef.current.has(key)) {
+      return; // Already have it or fetching it
+    }
+    console.log(`🎯 Prioritizing mockup: ${key}`);
+    priorityKeyRef.current = key;
+    setLoadingMockups(prev => ({ ...prev, [key]: true }));
+    
+    // Start fetch loop if not running
+    if (!isFetchingRef.current) {
+      processFetchQueue();
+    }
+  };
 
   // Open product detail modal (Etsy-style)
   const handleProductClick = (product: Product) => {
     setSelectedProductForModal(product);
     setIsModalOpen(true);
+    
+    // Prioritize fetching this product's mockup
+    if (product.sizes && product.sizes.length > 0) {
+      prioritizeMockup(product.sizes[0].variantKey);
+    } else {
+      prioritizeMockup(product.id);
+    }
   };
 
   // Select product for checkout (called from modal or direct selection)
@@ -289,6 +337,14 @@ export default function CheckoutPage() {
   const handleSizeSelect = (size: string) => {
     setSelectedSize(size);
     setError(null);
+    
+    // Prioritize fetching this size's mockup
+    if (selectedProduct?.sizes) {
+      const sizeOption = selectedProduct.sizes.find(s => s.size === size);
+      if (sizeOption) {
+        prioritizeMockup(sizeOption.variantKey);
+      }
+    }
     
     // If product size changed, switch to variant for that size (canvas, blanket, etc.)
     if (selectedProduct?.sizes && productVariantsMap && selectedVariant) {
