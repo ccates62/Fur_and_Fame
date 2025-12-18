@@ -85,10 +85,15 @@ export async function generateMockupViaSync(
     }
     
     // Create a sync variant with the customer's image
+    // Add cache-busting parameter to force Printful to fetch fresh image
+    const cacheBustedImageUrl = imageUrl.includes('?') 
+      ? `${imageUrl}&_t=${Date.now()}` 
+      : `${imageUrl}?_t=${Date.now()}`;
+    
     // Start with original file structure if available, otherwise create new
     const fileObject: any = originalFileStructure 
-      ? { ...originalFileStructure, url: imageUrl } // Copy all fields from original, but replace URL
-      : { type: "default", url: imageUrl };
+      ? { ...originalFileStructure, url: cacheBustedImageUrl } // Copy all fields from original, but replace URL
+      : { type: "default", url: cacheBustedImageUrl };
     
     // Remove fields that shouldn't be sent in the API request
     delete fileObject.filename;
