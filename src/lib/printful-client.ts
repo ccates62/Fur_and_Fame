@@ -217,9 +217,10 @@ export async function generatePrintfulMockup(
       return null;
     }
     
-    // Use sync product method for all products (canvas, blanket, etc.)
-    // This is the most reliable method as it uses your configured product settings
-    const useSyncMethod = productId.startsWith("canvas") || productId.startsWith("blanket");
+    // Disable sync product method - it doesn't generate actual product mockups
+    // The sync method only returns a preview of the uploaded file, not the product mockup
+    // Use the mockup generator API instead which creates proper product renderings
+    const useSyncMethod = false; // Previously: productId.startsWith("canvas") || productId.startsWith("blanket")
     
     if (useSyncMethod) {
       console.log(`🔄 Using sync product method for ${productId}...`);
