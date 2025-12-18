@@ -518,14 +518,14 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 to-white py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 to-white py-4 sm:py-12 px-2 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+        <div className="text-center mb-4 sm:mb-8">
+          <h1 className="text-2xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-2 sm:mb-4">
             Choose Your Product 🎨
           </h1>
-          <p className="text-xl text-gray-600">
+          <p className="text-sm sm:text-xl text-gray-600">
             Select how you'd like to display your pet's portrait
           </p>
         </div>
@@ -587,31 +587,35 @@ export default function CheckoutPage() {
                           
                           if (isLoading) {
                             return (
-                              <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600"></div>
+                              <div className="aspect-square flex items-center justify-center bg-gray-50">
+                                <div className="animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-b-2 border-amber-600"></div>
                               </div>
                             );
                           } else if (mockupUrl) {
-                            // Show Printful mockup - image defines its own size
+                            // Show Printful mockup
                             return (
-                              <img
-                                src={mockupUrl}
-                                alt={`${product.name} ${displaySize} mockup`}
-                                style={{ width: '100%', display: 'block' }}
-                              />
+                              <div className="aspect-square overflow-hidden bg-white">
+                                <img
+                                  src={mockupUrl}
+                                  alt={`${product.name} ${displaySize} mockup`}
+                                  className="w-full h-full object-contain"
+                                />
+                              </div>
                             );
                           } else if (selectedVariant) {
                             return (
-                              <img
-                                src={selectedVariant.url}
-                                alt="Preview"
-                                style={{ width: '100%', display: 'block' }}
-                              />
+                              <div className="aspect-square overflow-hidden bg-white">
+                                <img
+                                  src={selectedVariant.url}
+                                  alt="Preview"
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
                             );
                           } else {
                             return (
-                              <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <p className="text-sm text-gray-400">Loading...</p>
+                              <div className="aspect-square flex items-center justify-center bg-gray-50">
+                                <p className="text-xs sm:text-sm text-gray-400">Loading...</p>
                               </div>
                             );
                           }
@@ -623,25 +627,29 @@ export default function CheckoutPage() {
                         
                         if (isLoading) {
                           return (
-                            <div style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600"></div>
+                            <div className="aspect-square flex items-center justify-center bg-gray-50">
+                              <div className="animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-b-2 border-amber-600"></div>
                             </div>
                           );
                         } else if (mockupUrl) {
                           return (
-                            <img
-                              src={mockupUrl}
-                              alt={`${product.name} mockup`}
-                              style={{ width: '100%', display: 'block' }}
-                            />
+                            <div className="aspect-square overflow-hidden bg-white">
+                              <img
+                                src={mockupUrl}
+                                alt={`${product.name} mockup`}
+                                className="w-full h-full object-contain"
+                              />
+                            </div>
                           );
                         } else if (selectedVariant) {
                           return (
-                            <img
-                              src={selectedVariant.url}
-                              alt={`${product.name} preview`}
-                              style={{ width: '100%', display: 'block' }}
-                            />
+                            <div className="aspect-square overflow-hidden bg-white">
+                              <img
+                                src={selectedVariant.url}
+                                alt={`${product.name} preview`}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
                           );
                         } else {
                           return null;
