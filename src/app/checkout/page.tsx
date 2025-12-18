@@ -130,7 +130,8 @@ export default function CheckoutPage() {
     }
     
     console.log("🖼️ Starting Printful mockup fetch for all products...", {
-      variantUrl: selectedVariant.url?.substring(0, 50) + "..."
+      variantUrl: selectedVariant.url?.substring(0, 50) + "...",
+      fullUrl: selectedVariant.url
     });
 
     // Fetch mockups for all products in parallel
