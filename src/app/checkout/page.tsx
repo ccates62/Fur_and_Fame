@@ -194,7 +194,11 @@ export default function CheckoutPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedVariant?.url]); // Fetch when variant is available
 
-  // Process the fetch queue sequentially with rate limiting
+  // Process the fetch queue in batches with rate limiting
+  // Printful allows ~2 requests/minute for new stores
+  const BATCH_SIZE = 2;
+  const BATCH_DELAY_MS = 65000; // 65 seconds between batches (safe margin for 2/min)
+
   const processFetchQueue = async () => {
     if (isFetchingRef.current) return; // Already running
     isFetchingRef.current = true;
@@ -202,66 +206,75 @@ export default function CheckoutPage() {
     const newMockupUrls: Record<string, string> = {};
 
     while (fetchQueueRef.current.length > 0 || priorityKeyRef.current) {
+      // Build batch of keys to fetch
+      const batch: string[] = [];
+
       // Check for priority key first
-      let keyToFetch: string | null = null;
-      
       if (priorityKeyRef.current && !mockupUrls[priorityKeyRef.current] && !fetchingRef.current.has(priorityKeyRef.current)) {
-        keyToFetch = priorityKeyRef.current;
+        batch.push(priorityKeyRef.current);
+        fetchQueueRef.current = fetchQueueRef.current.filter(k => k !== priorityKeyRef.current);
+        console.log(`🚀 Priority fetch: ${priorityKeyRef.current}`);
         priorityKeyRef.current = null;
-        // Remove from queue if present
-        fetchQueueRef.current = fetchQueueRef.current.filter(k => k !== keyToFetch);
-        console.log(`🚀 Priority fetch: ${keyToFetch}`);
-      } else if (fetchQueueRef.current.length > 0) {
-        keyToFetch = fetchQueueRef.current.shift() || null;
       }
 
-      if (!keyToFetch) break;
-
-      // Skip if already have mockup or currently fetching
-      if (mockupUrls[keyToFetch] || newMockupUrls[keyToFetch] || fetchingRef.current.has(keyToFetch)) {
-        setLoadingMockups(prev => ({ ...prev, [keyToFetch!]: false }));
-        continue;
-      }
-
-      fetchingRef.current.add(keyToFetch);
-      console.log(`📤 Fetching Printful mockup for ${keyToFetch}...`);
-
-      try {
-        const response = await fetch("/api/printful-mockup", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            product_id: keyToFetch,
-            image_url: selectedVariant?.url,
-          }),
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.mockup_url) {
-            console.log(`✅ Printful mockup ready for ${keyToFetch}`);
-            newMockupUrls[keyToFetch] = data.mockup_url;
-            setMockupUrls(prev => {
-              const updated = { ...prev, [keyToFetch!]: data.mockup_url };
-              // Update cache
-              sessionStorage.setItem("mockupUrls", JSON.stringify(updated));
-              return updated;
-            });
-          }
-        } else {
-          console.error(`❌ Printful API error for ${keyToFetch}`);
+      // Fill batch with remaining queue items
+      while (batch.length < BATCH_SIZE && fetchQueueRef.current.length > 0) {
+        const key = fetchQueueRef.current.shift();
+        if (key && !mockupUrls[key] && !newMockupUrls[key] && !fetchingRef.current.has(key)) {
+          batch.push(key);
         }
-      } catch (err) {
-        console.error(`❌ Error fetching mockup for ${keyToFetch}:`, err);
       }
 
-      fetchingRef.current.delete(keyToFetch);
-      setLoadingMockups(prev => ({ ...prev, [keyToFetch!]: false }));
+      if (batch.length === 0) break;
 
-      // Wait 35 seconds between requests to avoid rate limiting
+      console.log(`📦 Fetching batch of ${batch.length}: ${batch.join(', ')}`);
+
+      // Mark all in batch as fetching
+      batch.forEach(key => fetchingRef.current.add(key));
+
+      // Fetch all in batch in parallel
+      const fetchPromises = batch.map(async (keyToFetch) => {
+        console.log(`📤 Fetching Printful mockup for ${keyToFetch}...`);
+
+        try {
+          const response = await fetch("/api/printful-mockup", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              product_id: keyToFetch,
+              image_url: selectedVariant?.url,
+            }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.mockup_url) {
+              console.log(`✅ Printful mockup ready for ${keyToFetch}`);
+              newMockupUrls[keyToFetch] = data.mockup_url;
+              setMockupUrls(prev => {
+                const updated = { ...prev, [keyToFetch]: data.mockup_url };
+                sessionStorage.setItem("mockupUrls", JSON.stringify(updated));
+                return updated;
+              });
+            }
+          } else {
+            console.error(`❌ Printful API error for ${keyToFetch}`);
+          }
+        } catch (err) {
+          console.error(`❌ Error fetching mockup for ${keyToFetch}:`, err);
+        }
+
+        fetchingRef.current.delete(keyToFetch);
+        setLoadingMockups(prev => ({ ...prev, [keyToFetch]: false }));
+      });
+
+      // Wait for all in batch to complete
+      await Promise.all(fetchPromises);
+
+      // Wait before next batch if more to fetch
       if (fetchQueueRef.current.length > 0 || priorityKeyRef.current) {
-        console.log(`⏳ Waiting 35s before next mockup request...`);
-        await new Promise(resolve => setTimeout(resolve, 35000));
+        console.log(`⏳ Waiting ${BATCH_DELAY_MS / 1000}s before next batch to avoid rate limits...`);
+        await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS));
       }
     }
 
