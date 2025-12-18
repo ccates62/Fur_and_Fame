@@ -85,10 +85,9 @@ export async function generateMockupViaSync(
     }
     
     // Create a sync variant with the customer's image
-    // Add cache-busting parameter to force Printful to fetch fresh image
-    const cacheBustedImageUrl = imageUrl.includes('?') 
-      ? `${imageUrl}&_t=${Date.now()}` 
-      : `${imageUrl}?_t=${Date.now()}`;
+    // Note: Don't add cache-busting for picsum URLs - they use seeds for consistency
+    // For real production images (Supabase URLs), the URL is already unique per upload
+    const cacheBustedImageUrl = imageUrl;
     
     // Start with original file structure if available, otherwise create new
     const fileObject: any = originalFileStructure 

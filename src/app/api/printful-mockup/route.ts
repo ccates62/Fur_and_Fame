@@ -33,6 +33,7 @@ export async function POST(request: NextRequest) {
     // Always use API method for reliable mockup generation
     
     console.log(`🖼️ Requesting Printful mockup for product: ${product_id}`);
+    console.log(`📷 Image URL being sent to Printful: ${image_url}`);
     const result = await generatePrintfulMockup(product_id, image_url);
     
     // Check if result is a sync URL (format: "sync:https://...")
