@@ -146,20 +146,33 @@ export default function CheckoutPage() {
       fullUrl: selectedVariant.url
     });
 
-    // Check sessionStorage cache first
+    // Check sessionStorage cache first - but invalidate if portrait URL changed
     const cachedMockups = sessionStorage.getItem("mockupUrls");
-    if (cachedMockups) {
+    const cachedPortraitUrl = sessionStorage.getItem("mockupPortraitUrl");
+    
+    if (cachedMockups && cachedPortraitUrl === selectedVariant.url) {
       try {
         const cached = JSON.parse(cachedMockups);
-        if (Object.keys(cached).length > 0) {
+        // Only use cache if we have all expected mockups
+        const expectedKeys = ["canvas-12x12", "canvas-16x20", "blanket-37x57", "blanket-50x60"];
+        const hasAllKeys = expectedKeys.every(key => cached[key]);
+        if (hasAllKeys) {
           console.log("📦 Using cached mockups from sessionStorage");
           setMockupUrls(cached);
           return; // Use cached mockups, skip fetching
+        } else {
+          console.log("⚠️ Cache incomplete, refetching...");
         }
       } catch (e) {
         console.log("⚠️ Could not parse cached mockups");
       }
+    } else if (cachedPortraitUrl !== selectedVariant.url) {
+      console.log("🔄 Portrait changed, clearing mockup cache");
+      sessionStorage.removeItem("mockupUrls");
     }
+    
+    // Store current portrait URL for cache validation
+    sessionStorage.setItem("mockupPortraitUrl", selectedVariant.url);
 
     // Build fetch queue: one size per product first, then remaining sizes
     const firstSizes: string[] = [];
