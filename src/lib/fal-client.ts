@@ -206,7 +206,8 @@ function generatePlaceholderVariants(
   
   const variants: PortraitVariant[] = [];
   for (let i = 1; i <= numVariants; i++) {
-    const seed = Math.abs(hashCode(`${params.petName}-${params.breed}-${i}-${productId || 'default'}`));
+    // Add version to bust Printful cache when needed
+    const seed = Math.abs(hashCode(`${params.petName}-${params.breed}-${i}-${productId || 'default'}-v2`));
     let variantPrompt = prompt;
     if (i === 2) {
       variantPrompt = `${prompt} slightly different angle`;
