@@ -530,8 +530,27 @@ export default function CheckoutPage() {
           </p>
         </div>
 
+        {/* Mobile Portrait Preview - Small version at top */}
+        <div className="lg:hidden mb-4">
+          <div className="bg-white rounded-lg shadow-md p-3 flex items-center gap-3">
+            <div className="relative w-16 h-20 rounded overflow-hidden bg-gray-100 flex-shrink-0">
+              <Image
+                src={selectedVariant.url}
+                alt="Selected portrait"
+                fill
+                className="object-cover"
+                sizes="64px"
+              />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-gray-900">Your Portrait</h2>
+              <p className="text-xs text-gray-600">This will be printed on your product</p>
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-8">
-          {/* Selected Portrait Preview - Hidden on mobile, shown in sidebar on desktop */}
+          {/* Selected Portrait Preview - Desktop sidebar */}
           <div className="hidden lg:block lg:col-span-1">
             <div className="bg-white rounded-lg shadow-lg p-6 sticky top-8">
               <h2 className="text-xl font-bold text-gray-900 mb-4">Your Portrait</h2>
@@ -552,7 +571,7 @@ export default function CheckoutPage() {
 
           {/* Product Selection */}
           <div className="col-span-1 lg:col-span-2">
-            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 mb-8">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-8">
               {products.map((product) => {
                 const isSelected = selectedProduct?.id === product.id;
                 return (
