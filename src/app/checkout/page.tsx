@@ -530,9 +530,9 @@ export default function CheckoutPage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Selected Portrait Preview */}
-          <div className="lg:col-span-1">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-8">
+          {/* Selected Portrait Preview - Hidden on mobile, shown in sidebar on desktop */}
+          <div className="hidden lg:block lg:col-span-1">
             <div className="bg-white rounded-lg shadow-lg p-6 sticky top-8">
               <h2 className="text-xl font-bold text-gray-900 mb-4">Your Portrait</h2>
               <div className="relative aspect-[3/4] rounded-lg overflow-hidden bg-gray-100 mb-4">
@@ -541,7 +541,7 @@ export default function CheckoutPage() {
                   alt="Selected portrait"
                   fill
                   className="object-cover"
-                  sizes="(max-width: 768px) 100vw, 33vw"
+                  sizes="33vw"
                 />
               </div>
               <p className="text-sm text-gray-600 text-center">
@@ -551,8 +551,8 @@ export default function CheckoutPage() {
           </div>
 
           {/* Product Selection */}
-          <div className="lg:col-span-2">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          <div className="col-span-1 lg:col-span-2">
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6 mb-8">
               {products.map((product) => {
                 const isSelected = selectedProduct?.id === product.id;
                 return (
@@ -649,11 +649,11 @@ export default function CheckoutPage() {
                       })()}
                     </div>
                     
-                    <div className="p-4">
-                      <h3 className="text-xl font-bold text-gray-900 mb-1 text-center">
+                    <div className="p-2 sm:p-4">
+                      <h3 className="text-sm sm:text-xl font-bold text-gray-900 mb-1 text-center">
                         {product.name}
                       </h3>
-                      <p className="text-sm text-gray-600 text-center mb-3 min-h-[2.5rem]">
+                      <p className="text-xs sm:text-sm text-gray-600 text-center mb-2 sm:mb-3 hidden sm:block min-h-[2.5rem]">
                         {product.description}
                       </p>
                       
