@@ -11,49 +11,32 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
  */
 export async function POST(request: NextRequest) {
   try {
-    const { 
-      product_id, 
-      product_name, 
-      price, 
-      variant_url, 
-      variant_id,
-      shipping_address, // Optional: shipping address for shipping calculation
-      shipping_cost, // Optional: pre-calculated shipping cost
-    } = await request.json();
+    const { product_id, product_name, variant_url, price, size, shipping_cost } = await request.json();
 
-    if (!product_id || !product_name || !price || !variant_url) {
+    if (!product_id || !product_name || !variant_url || !price) {
       return NextResponse.json(
-        { error: "Missing required fields", message: "product_id, product_name, price, and variant_url are required" },
+        { error: "Missing required fields", message: "product_id, product_name, variant_url, and price are required" },
         { status: 400 }
       );
     }
 
     const origin = request.headers.get("origin") || "http://localhost:3000";
 
-    // Build line items based on product
-    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
-
-    // Single product - include portrait image in Stripe product
-    const productDescription = product_id === "blanket" 
-      ? "Cozy fleece throw blanket with your pet's AI-generated portrait"
-      : product_id === "t-shirt"
-      ? "Soft cotton t-shirt featuring your pet's AI-generated portrait"
-      : product_id === "poster"
-      ? "High-quality poster print of your pet's AI-generated portrait"
-      : `Your pet's AI-generated portrait printed on ${product_name.toLowerCase()}`;
-    
-    lineItems.push({
-      price_data: {
-        currency: "usd",
-        product_data: {
-          name: product_name,
-          description: productDescription,
-          images: variant_url ? [variant_url] : undefined, // Show portrait in Stripe checkout
+    // Build line items
+    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [
+      {
+        price_data: {
+          currency: "usd",
+          product_data: {
+            name: product_name + (size ? ` (${size})` : ""),
+            description: "AI-generated pet portrait",
+            images: [variant_url],
+          },
+          unit_amount: Math.round(price * 100), // Convert to cents
         },
-        unit_amount: Math.round(price * 100), // Convert to cents
+        quantity: 1,
       },
-      quantity: 1,
-    });
+    ];
 
     // Add shipping as a line item if provided
     if (shipping_cost && shipping_cost > 0) {
@@ -62,7 +45,7 @@ export async function POST(request: NextRequest) {
           currency: "usd",
           product_data: {
             name: "Shipping",
-            description: "Standard shipping",
+            description: "Shipping and handling",
           },
           unit_amount: Math.round(shipping_cost * 100), // Convert to cents
         },
@@ -75,22 +58,20 @@ export async function POST(request: NextRequest) {
       payment_method_types: ["card"],
       line_items: lineItems,
       mode: "payment",
+      success_url: `${origin}/thank-you?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/checkout?cancelled=true`,
       shipping_address_collection: {
         allowed_countries: ["US", "CA", "GB", "AU"], // Add more countries as needed
       },
-      // Enable Stripe Tax for automatic tax calculation
       automatic_tax: {
-        enabled: true,
+        enabled: true, // Stripe automatically calculates tax
       },
-      success_url: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/checkout?cancelled=true`,
       metadata: {
         type: "product_purchase",
         product_id: product_id,
         product_name: product_name,
         variant_url: variant_url,
-        variant_id: variant_id || "",
-        shipping_cost: shipping_cost ? shipping_cost.toString() : "",
+        size: size || "",
       },
     });
 
@@ -107,4 +88,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

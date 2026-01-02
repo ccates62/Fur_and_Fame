@@ -85,14 +85,10 @@ export async function generateMockupViaSync(
     }
     
     // Create a sync variant with the customer's image
-    // Note: Don't add cache-busting for picsum URLs - they use seeds for consistency
-    // For real production images (Supabase URLs), the URL is already unique per upload
-    const cacheBustedImageUrl = imageUrl;
-    
     // Start with original file structure if available, otherwise create new
     const fileObject: any = originalFileStructure 
-      ? { ...originalFileStructure, url: cacheBustedImageUrl } // Copy all fields from original, but replace URL
-      : { type: "default", url: cacheBustedImageUrl };
+      ? { ...originalFileStructure, url: imageUrl } // Copy all fields from original, but replace URL
+      : { type: "default", url: imageUrl };
     
     // Remove fields that shouldn't be sent in the API request
     delete fileObject.filename;

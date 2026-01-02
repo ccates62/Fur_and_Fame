@@ -24,8 +24,8 @@ export async function POST(request: NextRequest) {
       
       // Expand session to get full details including shipping address
       const fullSession = await stripe.checkout.sessions.retrieve(session.id, {
-        expand: ['line_items', 'customer'],
-      }) as Stripe.Checkout.Session & { shipping_details?: { name?: string; address?: Stripe.Address } };
+        expand: ['line_items', 'customer', 'shipping_details'],
+      });
       
       // Extract sale information
       const amount = fullSession.amount_total ? fullSession.amount_total / 100 : 0; // Convert from cents
@@ -50,12 +50,14 @@ export async function POST(request: NextRequest) {
       console.log("✅ Sale automatically tracked from Stripe:", sale);
 
       // Create Printful order if product is configured and shipping address exists
-      if (productId && variantUrl && fullSession.shipping_details?.address) {
+      // Type assertion needed because expanded fields aren't in the base type
+      const shippingDetails = (fullSession as any).shipping_details;
+      if (productId && variantUrl && shippingDetails?.address) {
         const productMap = PRINTFUL_PRODUCT_MAP[productId];
         
-        if (productMap && fullSession.shipping_details?.address) {
-          const shipping = fullSession.shipping_details;
-          const address = shipping.address!;
+        if (productMap && shippingDetails.address) {
+          const shipping = shippingDetails;
+          const address = shipping.address;
           
           // Prepare Printful order data
           const printfulOrderData: PrintfulOrderData = {
@@ -72,7 +74,7 @@ export async function POST(request: NextRequest) {
             },
             items: [
               {
-                variant_id: typeof productMap.variantId === 'string' ? parseInt(productMap.variantId, 16) : productMap.variantId,
+                variant_id: productMap.variantId,
                 quantity: 1,
                 files: [
                   {

@@ -393,7 +393,7 @@ export function getPrintfulMockupUrlDirect(
  * @returns Printful order ID or null if creation fails
  */
 export interface PrintfulOrderItem {
-  variant_id: number;
+  variant_id: number | string; // Can be numeric ID or hex string (external_id)
   quantity: number;
   files: Array<{
     type: "default" | "preview" | "back";
